@@ -92,32 +92,32 @@ Sub InitLogFile(LogFolderPath As String, ConduitName As String, Optional LogFile
     folderPath = LogFolderPath
     fileName = LogFileName
     ''Checking if LogFolderPath is a valid Folder
-    If Dir(PathJoin(folderPath, "\"), vbDirectory) <> "." Then Err.Raise 76
+    If Dir(BuildPath(folderPath, "\"), vbDirectory) <> "." Then Err.Raise 76
     
     If fileName = "" Then fileName = LogSinkName & "." & constSinkFileExtension
     
     fileName = Format(DateTime.Now(), "yyyymmdd hhmmss_") & fileName
-    fileExists = Len(Dir(PathJoin(folderPath, fileName))) > O
+    fileExists = Len(Dir(BuildPath(folderPath, fileName))) > O
     
     If fileExists And FileAccess = FileAccesses.Append Then
         pLogFolderPath = folderPath
         pLogFileName = fileName
-        pLogFilePath = PathJoin(folderPath, fileName)
+        pLogFilePath = BuildPath(folderPath, fileName)
     ElseIf fileExists And FileAccess = FileAccesses.Overwrite Then
         pLogFolderPath = folderPath
         pLogFileName = fileName
-        pLogFilePath = PathJoin(folderPath, fileName)
+        pLogFilePath = BuildPath(folderPath, fileName)
     ElseIf fileExists And FileAccess = FileAccesses.CreateNew Then
         fileName = GetUniqueLogFileName(folderPath, fileName)
         
         pLogFolderPath = folderPath
         pLogFileName = fileName
-        pLogFilePath = PathJoin(folderPath, fileName)
+        pLogFilePath = BuildPath(folderPath, fileName)
     ElseIf Not fileExists Then
         fileName = GetUniqueLogFileName(folderPath, fileName)
         pLogFolderPath = folderPath
         pLogFileName = fileName
-        pLogFilePath = PathJoin(folderPath, fileName)
+        pLogFilePath = BuildPath(folderPath, fileName)
     End If
     
     pFileNum = FreeFile
@@ -200,7 +200,7 @@ Private Function GetUniqueLogFileName(LogFolderPath As String, LogFileName As St
     fileName = LogFileName
     
     On Error GoTo errMark
-        If Dir(PathJoin(folderPath, "\"), vbDirectory) <> "." Then Err.Raise 76
+        If Dir(BuildPath(folderPath, "\"), vbDirectory) <> "." Then Err.Raise 76
         
         extStart = InStrRev(fileName, ".")
         If extStart = O Then fileName = fileName & "." & SinkFileExtension
@@ -212,7 +212,7 @@ Private Function GetUniqueLogFileName(LogFolderPath As String, LogFileName As St
         tempLogFileName = baseName & "." & extName
     
         n = 1
-        Do While Len(Dir(PathJoin(folderPath, tempLogFileName))) <> 0 And n <= 999
+        Do While Len(Dir(BuildPath(folderPath, tempLogFileName))) <> 0 And n <= 999
             tempLogFileName = baseName & "_" & Format(n, "000") & "." & extName
             n = n + 1
         Loop
@@ -271,7 +271,6 @@ End Property
 
 Property Get ILogConduit_MessageTemplate() As String
     ILogConduit_MessageTemplate = pMessageTemplate
-
 End Property
 
 Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, ConduitName As String, ConduitLoggingLevel As LoggingLevels)

@@ -42,7 +42,7 @@ Property Get MessageTemplate() As String
 End Property
 
 Sub InitConduit(ParentLogger As cEvoLogger, ConduitName As String, ConduitLoggingLevel As LoggingLevels)
-    pParentLoggers.Add ParentLogger
+    pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
     pConduitName = ConduitName
     Me.ConduitLoggingLevel = ConduitLoggingLevel
 End Sub
@@ -119,7 +119,6 @@ End Property
 
 Property Get ILogConduit_MessageTemplate() As String
     ILogConduit_MessageTemplate = pMessageTemplate
-
 End Property
 
 Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, ConduitName As String, ConduitLoggingLevel As LoggingLevels)
