@@ -1,5 +1,5 @@
-# EVOLog
-Evocate Verbose Output Log - Channel multiple log outputs with EVOLog
+# EVOLog - Evocation Logging
+Evoke Verbose Output Logging - Channel multiple log outputs with EVOLog
 
 This project is a VBA logging project that was inspired by Serilog style logging.
 VBA is an obtuse language that is easily avaiable to those using Microsoft Office.
