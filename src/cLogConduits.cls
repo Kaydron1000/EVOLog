@@ -30,6 +30,9 @@ Attribute VB_Exposed = False
 ''along with this program; if not, write to the Free Software
 ''Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Custom collection to store and return ILogConduit types.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
 
@@ -46,25 +49,10 @@ Public Sub Class_Terminate()
     Set myCustomCollection = Nothing
 End Sub
 
-Public Sub Add(ByVal Item As Object, Optional key, Optional before, Optional after)
-    If IsMissing(key) Then
-        If IsMissing(before) Then
-            myCustomCollection.Add Item:=Item, before:=before
-        ElseIf IsMissing(after) Then
-            myCustomCollection.Add Item:=Item, after:=after
-        Else
-            myCustomCollection.Add Item:=Item
-        End If
-    ElseIf Not IsMissing(key) Then
-        If IsMissing(before) Then
-            myCustomCollection.Add Item:=Item, key:=key, before:=before
-        ElseIf IsMissing(after) Then
-            myCustomCollection.Add Item:=Item, key:=key, after:=after
-        Else
-            myCustomCollection.Add Item:=Item, key:=key
-        End If
-        myCustomCollectionKeys.Add Item:=key, key:=key
-    End If
+Public Sub Add(ByVal Item As Object, Optional Key As Variant, _
+               Optional Before As Variant, Optional After As Variant)
+    myCustomCollection.Add Item:=Item, Key:=Key, Before:=Before, After:=After
+    myCustomCollectionKeys.Add Item:=Key, Key:=Key
 End Sub
 
 Public Sub AddItems(ParamArray arr() As Variant)

@@ -30,12 +30,17 @@ Attribute VB_Exposed = False
 ''along with this program; if not, write to the Free Software
 ''Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''This log conduit stores the count of log levels channeled
+''through this conduit.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
 Implements ILogConduit
 
 Dim pParentLoggers As cEvoLoggers
 Dim pLoggingLevelNames As Collection
+Dim pDefaultLoggingLevel As LoggingLevels
 Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
@@ -85,10 +90,14 @@ End Property
 Property Get FatalCount() As Long
     FatalCount = pLogCounts(6)
 End Property
-Sub InitConduit(ParentLogger As cEvoLogger, ConduitName As String, ConduitLoggingLevel As LoggingLevels)
+Sub InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
     pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
-    pConduitName = ConduitName
-    Me.ConduitLoggingLevel = ConduitLoggingLevel
+    
+    If ConduitLoggingLevel = NoAssignment Then
+        Me.ConduitLoggingLevel = pDefaultLoggingLevel
+    Else
+        Me.ConduitLoggingLevel = ConduitLoggingLevel
+    End If
     
     ReDim pLogCounts(1 To ParentLogger.LoggingLevelNames.Count)
 End Sub
@@ -144,6 +153,7 @@ Private Sub Class_Initialize()
     Set pParentLoggers = New cEvoLoggers
     
     Set pLoggingLevelNames = New Collection
+    pDefaultLoggingLevel = Verbose
     pLoggingLevelNames.Add "Verbose", "Verbose"
     pLoggingLevelNames.Add "Debugg", "Debugg"
     pLoggingLevelNames.Add "Information", "Information"

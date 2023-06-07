@@ -128,7 +128,7 @@ End Property
 ''Adds a conduit to the logger.
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Sub AddConduit(Conduit As ILogConduit)
-
+    
     Me.FlushBatchedLogEntries
     Conduit.InitConduit Me
     pActiveConduits.Add Conduit, Conduit.ConduitName
@@ -137,14 +137,23 @@ End Sub
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''Removes a conduit from the logger.
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Sub RemoveConduit(ConduitName As String)
-    Dim Conduit As ILogConduit
+Sub RemoveConduit(Conduit As Variant)
+    Dim ConduitObj As ILogConduit
     
-    Set Conduit = pActiveConduits(ConduitName)
-    Me.FlushBatchedLogEntries
-    
-    Conduit.ParentEvoLoggers.Remove Me.LoggerName
-    pActiveConduits.Remove ConduitName
+    If TypeName(Conduit) = "String" Or TypeName(Conduit) = "Integer" Then
+        Set ConduitObj = pActiveConduits(Conduit)
+    ElseIf TypeOf Conduit Is ILogConduit Then
+        Set ConduitObj = Conduit
+    Else
+        Set ConduitObj = Nothing
+    End If
+
+    If Not ConduitObj Is Nothing Then
+        Me.FlushBatchedLogEntries
+        
+        ConduitObj.ParentEvoLoggers.Remove Me.LoggerName
+        pActiveConduits.Remove ConduitObj.ConduitName
+    End If
 End Sub
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -167,9 +176,9 @@ End Function
 Sub ClearConduits()
     Dim cnt As Integer
     
-    For cnt = 1 To pActiveConduits.Count
+    Do While pActiveConduits.Count > 0
         pActiveConduits.Remove cnt
-    Next
+    Loop
 End Sub
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''

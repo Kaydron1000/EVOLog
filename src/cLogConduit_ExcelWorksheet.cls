@@ -30,6 +30,9 @@ Attribute VB_Exposed = False
 ''along with this program; if not, write to the Free Software
 ''Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''This log conduit channels log messages to an Excel worksheet.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
 Implements ILogChannel
@@ -37,6 +40,7 @@ Implements ILogChannel
 Private Const constConduitFileExtension As String = "xlsx"
 Dim pParentLoggers As cEvoLoggers
 Dim pLoggingLevelNames As Collection
+Dim pDefaultLoggingLevel As LoggingLevels
 Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
@@ -85,14 +89,18 @@ Property Get LogFileName() As String
     LogFileName = pLogFileName
 End Property
 
-Sub InitConduit(ParentLogger As cEvoLogger, ConduitName As String, ConduitLoggingLevel As LoggingLevels)
+Sub InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
     pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
-    pConduitName = ConduitName
-    Me.ConduitLoggingLevel = ConduitLoggingLevel
+      
+    If ConduitLoggingLevel = NoAssignment Then
+        Me.ConduitLoggingLevel = pDefaultLoggingLevel
+    Else
+        Me.ConduitLoggingLevel = ConduitLoggingLevel
+    End If
 End Sub
-Sub InitWorkbook(LogFolderPath As String, ConduitName As String, Optional LogFileName As String, _
-    Optional WorksheetName As String, Optional Headers As Variant, _
-    Optional FileAccess As FileAccesses = FileAccesses.Append)
+Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment, Optional LogFileName As String = "{DATETIME}_{CONDUITNAME}", _
+         Optional LogFolderPath As String = "LogOutput", Optional FileAccess As FileAccesses = FileAccesses.Append, _
+         Optional WorksheetName As String = "{DATETIME}_{CONDUITNAME}", Optional Headers As Variant = Nothing)
     
     Dim n As Integer
     Dim fileExists As Boolean
@@ -173,6 +181,14 @@ Sub InitWorkbook(LogFolderPath As String, ConduitName As String, Optional LogFil
     Set pLoggingSht = pLoggingWB.Worksheets.Add
     pLoggingSht.Name = shtName
     SetTitleAndHeaders pLoggingSht, "LogSheet - " & LogSinkName, pDefaultHeaders
+    
+    Me.ConduitName = ConduitName
+    
+    If ConduitLoggingLevel = NoAssignment Then
+        Me.ConduitLoggingLevel = pDefaultLoggingLevel
+    Else
+        Me.ConduitLoggingLevel = ConduitLoggingLevel
+    End If
 End Sub
 
 Sub SetTitleAndHeaders(sht As Worksheet, Title As String, Headers() As String)
@@ -323,6 +339,7 @@ Private Sub Class_Initialize()
     Set pParentLoggers = New Collection
     
     Set pLoggingLevelNames = New Collection
+    pDefaultLoggingLevel = Information
     pLoggingLevelNames.Add "Verbose", "Verbose"
     pLoggingLevelNames.Add "Debugg", "Debugg"
     pLoggingLevelNames.Add "Information", "Information"

@@ -57,7 +57,7 @@ End Property
 Property Get MessageTemplate() As String
 End Property
 
-Sub InitConduit(ParentLogger As cEvoLogger, ConduitName As String, ConduitLoggingLevel As LoggingLevels)
+Sub InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
 End Sub
 
 Sub ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)

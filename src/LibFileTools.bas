@@ -712,7 +712,7 @@ Public Function CreateFolder(ByRef folderPath As String _
         '
         fullPath = Left$(fullPath, sepIndex - 1)
         If IsFolder(fullPath) Then Exit Do
-        collFoldersToCreate.Add fullPath, before:=1
+        collFoldersToCreate.Add fullPath, Before:=1
     Loop
     On Error Resume Next
     For Each v In collFoldersToCreate
@@ -903,7 +903,7 @@ Private Function ForbiddenNameChars(ByVal addCaret As Boolean) As Collection
     If hasCaret And Not addCaret Then
         collForbiddenChars.Remove 1
     ElseIf Not hasCaret And addCaret Then
-        collForbiddenChars.Add Item:="^", before:=1
+        collForbiddenChars.Add Item:="^", Before:=1
     End If
     hasCaret = addCaret
     '
@@ -1196,7 +1196,7 @@ Private Function GetFSOFolder(ByRef folderPath As String) As Object
             If collNames.Count = 0 Then
                 collNames.Add folderName
             Else
-                collNames.Add folderName, before:=1
+                collNames.Add folderName, Before:=1
             End If
             Err.Clear
             Set fsoFolder = fso.GetFolder(parentPath)

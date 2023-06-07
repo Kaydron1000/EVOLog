@@ -30,6 +30,9 @@ Attribute VB_Exposed = False
 ''along with this program; if not, write to the Free Software
 ''Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''This log conduit channels log messages to a text file.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
 Implements ILogChannel
@@ -37,6 +40,7 @@ Implements ILogChannel
 Private Const constConduitFileExtension As String = "txt"
 Dim pParentLoggers As Collection
 Dim pLoggingLevelNames As Collection
+Dim pDefaultLoggingLevel As LoggingLevels
 Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
@@ -100,14 +104,18 @@ Property Get LogFileName() As String
     LogFileName = pLogFileName
 End Property
 
-Sub InitSink(ParentLogger As cLogger, ConduitName As String, ConduitLoggingLevel As LoggingLevels)
+Sub InitConduit(ParentLogger As cLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
     pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
-    pConduitName = ConduitName
-    Me.ConduitLoggingLevel = ConduitLoggingLevel
+      
+    If ConduitLoggingLevel = NoAssignment Then
+        Me.ConduitLoggingLevel = pDefaultLoggingLevel
+    Else
+        Me.ConduitLoggingLevel = ConduitLoggingLevel
+    End If
 End Sub
 
-Sub InitLogFile(LogFolderPath As String, ConduitName As String, Optional LogFileName As String, _
-    Optional FileAccess As FileAccesses = FileAccesses.Append)
+Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment, Optional LogFileName As String = "{DATETIME}_{CONDUITNAME}", _
+         Optional LogFolderPath As String = "LogOutput", Optional FileAccess As FileAccesses = FileAccesses.Append)
     
     Dim fileExists As Boolean
     Dim fileName As String
@@ -151,6 +159,15 @@ Sub InitLogFile(LogFolderPath As String, ConduitName As String, Optional LogFile
     ElseIf FileAccess = FileAccesses.CreateNew Or FileAccess = FileAccesses.Overwrite Then
         Open LogFilePath For Output As #pFileNum
         pFileOpen = True
+    End If
+    
+    
+    Me.ConduitName = ConduitName
+    
+    If ConduitLoggingLevel = NoAssignment Then
+        Me.ConduitLoggingLevel = pDefaultLoggingLevel
+    Else
+        Me.ConduitLoggingLevel = ConduitLoggingLevel
     End If
 End Sub
 Sub OpenLogFile()
@@ -261,6 +278,7 @@ Private Sub Class_Initialize()
     Set pParentLoggers = New Collection
     
     Set pLoggingLevelNames = New Collection
+    pDefaultLoggingLevel = Verbose
     pLoggingLevelNames.Add "Verbose", "Verbose"
     pLoggingLevelNames.Add "Debugg", "Debugg"
     pLoggingLevelNames.Add "Information", "Information"
