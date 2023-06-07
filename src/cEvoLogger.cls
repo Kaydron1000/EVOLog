@@ -7,11 +7,19 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
-''''''''''''''''''''''''
-'''' Logger class was inspired by Serilog library for .NET.
-'''' Provides ability for multiple conduits
-''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''EVOLogger was inspired by Serilog library for .NET.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''EVOLogger's base class is the cEVOLogger. This class allows
+''channeling log messages to multiple conduits. Once the class
+''is instantiated conduits must be added to channel log
+''messages out to the conduits destination. Conduits implement
+''the ILogConduit interface to channel log messages to any
+''destination (i.e. Text File,Text Box, another cEvoLogger).
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Option Explicit
+
 Public Enum LoggingLevels
     NoAssignment = 0
     Verbose = 1
@@ -36,12 +44,23 @@ Private pBatchSetCount As Integer
 Private pBatchOutput As Boolean
 Private pNextBatchCnt As Integer
 
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Unique name of this logger.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Public Property Get LoggerName() As String
     LoggerName = pLoggerName
 End Property
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Specifies if log messages are channeled in batches.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Public Property Get BatchOutput() As Boolean
     BatchOutput = pBatchOutput
 End Property
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Sets log messages to be channeled individually or in batches.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Public Property Let BatchOutput(batchIt As Boolean)
     If batchIt Then
         ReDim pBatchedLoggingLevels(0 To pBatchSetCount - 1)
@@ -54,29 +73,77 @@ Public Property Let BatchOutput(batchIt As Boolean)
     
     pBatchOutput = batchIt
 End Property
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Number of log messages stored before channeled in a batch.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Public Property Get BatchSetCount() As Integer
     BatchSetCount = pBatchSetCount
 End Property
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Set number of log messages to batch.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Public Property Let BatchSetCount(BatchCount As Integer)
     pBatchSetCount = BatchCount
     ReDim Preserve pBatchedLoggingLevels(0 To pBatchSetCount - 1)
     ReDim Preserve pBatchedLogMessages(0 To pBatchSetCount - 1)
 End Property
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Number of attached conduits.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Public Property Get ConduitsCount() As Integer
     ConduitsCount = pActiveConduits.Count
 End Property
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Collection of the logging level names.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Public Property Get LoggingLevelNames() As Collection
     Set LoggingLevelNames = pLoggingLevelNames
 End Property
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Adds a conduit to the logger.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Sub AddConduit(Conduit As ILogConduit)
+
+    Me.FlushBatchedLogEntries
+    Conduit.InitConduit Me
     pActiveConduits.Add Conduit, Conduit.ConduitName
 End Sub
-Sub RemoveConduit(LogConduitName As String)
-    pActiveConduits.Remove LogConduitName
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Removes a conduit from the logger.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Sub RemoveConduit(ConduitName As String)
+    Dim Conduit As ILogConduit
+    
+    Set Conduit = pActiveConduits(ConduitName)
+    Me.FlushBatchedLogEntries
+    
+    Conduit.ParentEvoLoggers.Remove Me.LoggerName
+    pActiveConduits.Remove ConduitName
 End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Gets the names of all conduits attached to this logger.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function GetConduitNames() As Collection
+    Set GetConduitNames = pActiveConduits.Keys
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Gets the specified conduit.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Function GetConduit(Item As Variant) As ILogConduit
     Set GetConduit = pActiveConduits(Item)
 End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Clears all conduits for the logger.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Sub ClearConduits()
     Dim cnt As Integer
     
@@ -84,6 +151,10 @@ Sub ClearConduits()
         pActiveConduits.Remove cnt
     Next
 End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Log a message to all attached conduits.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Sub LogEntry(LoggingLevel As LoggingLevels, LogMessage As String)
     Dim logConduit As ILogConduit
     
@@ -103,13 +174,17 @@ Sub LogEntry(LoggingLevel As LoggingLevels, LogMessage As String)
     End If
 End Sub
 
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Flush any batched log messages to the conduits.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Sub FlushBatchedLogEntries()
     Dim logConduit As ILogConduit
     Dim cnt As Integer
     
     If BatchOutput Then
         For Each logConduit In pActiveConduits
-            logConduit.ChannelLogEntries pBatchedLoggingLevels, pBatchedLogMessages, pNextBatchCnt
+            logConduit.ChannelLogEntries pBatchedLoggingLevels, _
+                                         pBatchedLogMessages, pNextBatchCnt
         Next
         
         For cnt = 0 To pBatchSetCount - 1
@@ -120,7 +195,12 @@ Sub FlushBatchedLogEntries()
         pNextBatchCnt = 0
     End If
 End Sub
-Private Function GUID(Optional lowercase As Boolean, Optional parens As Boolean) As String
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Creates a moderately unique ID for logger.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Private Function GUID(Optional lowercase As Boolean, _
+                      Optional parentheses As Boolean) As String
     Dim k&, h$
     GUID = Space(36)
     For k = 1 To Len(GUID)
@@ -134,8 +214,12 @@ Private Function GUID(Optional lowercase As Boolean, Optional parens As Boolean)
         Mid$(GUID, k, 1) = h
     Next
     If lowercase Then GUID = LCase$(GUID)
-    If parens Then GUID = "{" & GUID & "}"
+    If parentheses Then GUID = "{" & GUID & "}"
 End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Initializes EVOLogger class.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Private Sub Class_Initialize()
     Set pActiveConduits = New cLogConduits
     Set pLoggingLevelNames = New Collection

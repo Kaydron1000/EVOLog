@@ -7,6 +7,13 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''EVOLogger has the capablity to interface with any ILogConduit
+''created. This conduit definition provides the neccessary
+''properties and subroutines for cEVOLogger class to utilze a
+''conduit. Conduits provide a way to channel a log message to
+''its appropriate destination (i.e. Text File,Text Box).
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Option Explicit
 
 Property Get ParentEvoLoggers() As cEvoLoggers
