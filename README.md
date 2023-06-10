@@ -1,3 +1,5 @@
+Currently in development
+
 # EVOLog - Evocation Logging
 Evoke Verbose Output Logging - Channel multiple log outputs with EVOLog
 
