@@ -33,8 +33,30 @@ Attribute VB_Exposed = False
 
 Option Explicit
 
-Public pMessage As String
-Public pTimeStamp As Date
-Public LogLevel As LoggingLevels
+Public pLoggingLevelNames As Collection
+
+Public Charged As Boolean
+Public Message As String
+Public TimeStamp As Date
+Public LoggingLevel As LoggingLevels
 
 
+Public Static Function LoggingLevelNames() As Collection
+    Me.Charged = False
+End Function
+
+
+Public Function FormatArtifact(MessageTemplate As String, Optional TimeStampFormatString As Variant = "yyyymmdd_hhmmss", _
+                               Optional DateFormatString As Variant = "mm/dd/yy", Optional TimeFormatString As Variant = "hh:mm:ss") As String
+    FormatArtifact = UCase(MessageTemplate)
+    FormatArtifact = Replace(FormatArtifact, "#LOGGINGLEVEL#", pLoggingLevelNames(LoggingLevel))
+    FormatArtifact = Replace(FormatArtifact, "#DATE#", Format(TimeStamp.Date, DateFormatString))
+    FormatArtifact = Replace(FormatArtifact, "#TIME#", Format(TimeStamp.Time, TimeFormatString))
+    FormatArtifact = Replace(FormatArtifact, "#TIMESTAMP#", Format(TimeStamp, TimeStampFormatString))
+    FormatArtifact = Replace(FormatArtifact, "#MESSAGE#", Message)
+    
+End Function
+
+Private Sub Class_Initialize()
+    Charged = False
+End Sub

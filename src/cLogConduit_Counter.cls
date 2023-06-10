@@ -90,39 +90,41 @@ End Property
 Property Get FatalCount() As Long
     FatalCount = pLogCounts(6)
 End Property
-Sub InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
+Sub InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = Verbose)
     pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
     
-    If ConduitLoggingLevel = NoAssignment Then
-        Me.ConduitLoggingLevel = pDefaultLoggingLevel
-    Else
-        Me.ConduitLoggingLevel = ConduitLoggingLevel
-    End If
-    
-    ReDim pLogCounts(1 To ParentLogger.LoggingLevelNames.Count)
+    Me.ConduitLoggingLevel = ConduitLoggingLevel
+
+    ReDim pLogCounts(1 To pLoggingLevelNames.Count)
 End Sub
-Sub ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
-    If LogMessageLevel >= Me.ConduitLoggingLevel Then
-        pLogCounts(LogMessageLevel) = pLogCounts(LogMessageLevel) + 1
+
+Sub Init(ConduitName As String)
+    pConduitName = ConduitName
+End Sub
+'*******************************************************************************
+' Channels a single LogArtifact to its destination.
+'*******************************************************************************
+Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
+    If LogArtifact.LoggingLevel >= Me.ConduitLoggingLevel Then
+        pLogCounts(LogArtifact.LoggingLevel) = pLogCounts(LogArtifacts.LoggingLevel) + 1
     End If
 End Sub
 
-Sub ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
+'*******************************************************************************
+' Channels an array of LogArtifacts to their destinations.
+'*******************************************************************************
+Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     Dim cnt As Long
     
-    If UBound(LogMessageLevels) + 1 < (LBound(LogMessageLevels) + EntryCount) And _
-    UBound(Messages) + 1 < (LBound(Messages) + EntryCount) Then Err.Raise 440
-    
-    For cnt = LBound(LogMessageLevels) To LBound(LogMessageLevels) + (EntryCount - 1)
-        If LogMessageLevels(cnt) <> LoggingLevels.NoAssignment Then
-            If LogMessageLevels(cnt) >= Me.ConduitLoggingLevel Then
-                pLogCounts(LogMessageLevels(cnt)) = pLogCounts(LogMessageLevels(cnt)) + 1
-            End If
+    For cnt = LBound(LogArtifacts) To UBound(LogArtifacts)
+        If LogArtifacts(cnt).LoggingLevel >= Me.ConduitLoggingLevel Then
+            pLogCounts(LogArtifacts(cnt).LoggingLevel) = pLogCounts(LogArtifacts(cnt).LoggingLevel) + 1
         End If
     Next
 End Sub
 
 Function LogCountsToString() As String
+    Dim LoggingLevelNames As Collection
     Dim entries() As String
     Dim strg As String
     Dim n As Integer
@@ -186,16 +188,15 @@ Property Get ILogConduit_MessageTemplate() As String
     ILogConduit_MessageTemplate = pMessageTemplate
 End Property
 
-Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, ConduitName As String, ConduitLoggingLevel As LoggingLevels)
-    Me.InitConduit ParentLogger, ConduitName, ConduitLoggingLevel
+Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
+    Me.InitConduit ParentLogger, ConduitLoggingLevel
 End Sub
 
-Sub ILogConduit_ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
-    Me.ChannelLogEntry LogMessageLevel, Message
+Sub ILogConduit_ChannelLogArtifact(LogArtifact As cEvoArtifact)
+    Me.ChannelLogArtifact LogArtifact
 End Sub
 
-Sub ILogConduit_ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
-    Me.ChannelLogEntries LogMessageLevels, Messages, EntryCount
+Sub ILogConduit_ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
+    Me.ChannelLogArtifacts LogArtifacts
 End Sub
-
 

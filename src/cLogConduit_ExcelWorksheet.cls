@@ -54,29 +54,55 @@ Dim pLogFolderPath As String
 Dim pLogFilePath As String
 Dim pLogFileName As String
 
-Property Get ConduitFileExtension() As String
-    ConduitFileExtension = constConduitFileExtension
+'*******************************************************************************
+' Parent Loggers that log messages are channeled from.
+'*******************************************************************************
+Public Property Get ParentLoggers() As cEvoLoggers
+    Set ParentLogger = pParentLogger
 End Property
 
-Public Property Get ParentLoggers() As cEvoLoggers
-    Set ParentLoggers = pParentLoggers
-End Property
+'*******************************************************************************
+' ILogConduit Name
+'*******************************************************************************
 Property Get ConduitName() As String
     ConduitName = pConduitName
 End Property
 
+'*******************************************************************************
+' Set the logging level that is channeled from this conduit.
+'*******************************************************************************
 Property Let ConduitLoggingLevel(Level As LoggingLevels)
-    pConduitLogginglLevel = Level
+    pConduitLoggingLevel = Level
 End Property
+
+'*******************************************************************************
+' Get the logging level that is channeled from this conduit.
+'*******************************************************************************
 Property Get ConduitLoggingLevel() As LoggingLevels
     ConduitLoggingLevel = pConduitLoggingLevel
 End Property
+
+'*******************************************************************************
+' Set the message template that describes the format of the log message.
+'*******************************************************************************
 Property Let MessageTemplate(Template As String)
     pMessageTemplate = Template
 End Property
+
+'*******************************************************************************
+' Get the message template that describes the format of the log message.
+'*******************************************************************************
 Property Get MessageTemplate() As String
     MessageTemplate = pMessageTemplate
 End Property
+
+'*******************************************************************************
+' Log File extension
+'*******************************************************************************
+Property Get ConduitFileExtension() As String
+    ConduitFileExtension = constConduitFileExtension
+End Property
+
 
 Property Get LogFileOpen()
     LogFileOpen = pFileOpen
@@ -101,9 +127,9 @@ Sub InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As Logg
         Me.ConduitLoggingLevel = ConduitLoggingLevel
     End If
 End Sub
-Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment, Optional LogFileName As String = "{DATETIME}_{CONDUITNAME}", _
-         Optional LogFolderPath As String = "LogOutput", Optional FileAccess As FileAccesses = FileAccesses.Append, _
-         Optional WorksheetName As String = "{DATETIME}_{CONDUITNAME}", Optional Headers As Variant = Nothing)
+Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment, Optional LogFileName As Variant = "{DATETIME}_{LOGGERNAME}_{CONDUITNAME}", _
+         Optional LogFolderPath As Variant = "LogOutput", Optional FileAccess As FileAccesses = FileAccesses.Append, _
+         Optional WorksheetName As Variant = "{DATETIME}_{CONDUITNAME}", Optional Headers As Variant = Nothing)
     
     Dim n As Integer
     Dim fileExists As Boolean
@@ -332,6 +358,10 @@ End Function
 Private Function FolderFromPath(strFullPath As String) As String
     FolderFromPath = Left(strFullPath, InStrRev(strFullPath, "\"))
 End Function
+
+'*******************************************************************************
+' Class initialize method
+'*******************************************************************************
 Private Sub Class_Initialize()
     pMessageTemplate = "[#LOGGINGLEVEL#]" & vbTab & "[#DATE# #TIME#]: " & vbTab & "#MESSAGE#"
     ReDim pDefaultHeaders(0 To 2)
@@ -350,8 +380,19 @@ Private Sub Class_Initialize()
     pLoggingLevelNames.Add "Error", "Error"
     pLoggingLevelNames.Add "Fatal", "Fatal"
 End Sub
+
+'*******************************************************************************
+' Class terminate method
+'*******************************************************************************
 Private Sub Class_Terminate()
 End Sub
+
+
+'*******************************************************************************
+' Implementing ILogConduit Interface Methods and Properties
+'*******************************************************************************
+
+
 Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
     Set ILogConduit_ParentEvoLoggers = Me.ParentEvoLoggers
 End Property
@@ -376,16 +417,16 @@ Property Get ILogConduit_MessageTemplate() As String
     ILogConduit_MessageTemplate = pMessageTemplate
 End Property
 
-Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, ConduitName As String, ConduitLoggingLevel As LoggingLevels)
+Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
     Me.InitConduit ParentLogger, ConduitName, ConduitLoggingLevel
 End Sub
 
-Sub ILogConduit_ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
-    Me.ChannelLogEntry LogMessageLevel, Message
+Sub ILogConduit_ChannelLogArtifact(LogArtifact As cEvoArtifact)
+    Me.ChannelLogArtifact LogArtifact
 End Sub
 
-Sub ILogConduit_ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
-    Me.ChannelLogEntries LogMessageLevels, Messages, EntryCount
+Sub ILogConduit_ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
+    Me.ChannelLogArtifacts LogArtifacts
 End Sub
 
 

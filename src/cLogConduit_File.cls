@@ -161,7 +161,7 @@ Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
     
     If fileName = "" Then fileName = LogSinkName & "." & constSinkFileExtension
     
-    fileName = Format(DateTime.Now(), "yyyymmdd hhmmss_") & fileName
+    fileName = Format(DateTime.Now(), "yyyymmdd_hhmmss_") & fileName
     fileExists = Len(Dir(BuildPath(folderPath, fileName))) > O
     
     If fileExists And FileAccess = FileAccesses.Append Then
@@ -225,55 +225,37 @@ Sub CloseLogFile()
 End Sub
 
 '*******************************************************************************
-' Channels a single log entry to its destination.
+' Channels a single LogArtifact to its destination.
 '*******************************************************************************
-Sub ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
-    If LogMessageLevel <> LoggingLevels.NoAssignment Then
-        If LogMessageLevel >= Me.ConduitLoggingLevel Then
-            If pFileOpen Then
-                Print #pFileNum, FormatMessage(pMessageTemplate, LogMessagelLevel, Message)
-            Else
-                OpenLogFile
-                Print #pFileNum, FormatMessage(pMessageTemplate, LogMessagelLevel, Message)
-                CloseLogFile
-            End If
-        End If
-    End If
-End Sub
-
-'*******************************************************************************
-' Channels an array of log entries to their destinations.
-'*******************************************************************************
-Sub ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
-    Dim cnt As Long
+Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
     Dim logFileIsOpen As Boolean
-    
-    If UBound(LogMessageLevels) + 1 < LBound(LogMessageLevels) + EntryCount And UBound(Messages) + 1 < LBound(Messages) + EntryCount Then Err.Raise 440
     
     logFileIsOpen = Me.LogFileOpen
     
     If Not logFileIsOpen Then OpenLogFile
-    For cnt = LBound(LogMessageLevels) To LBound(LogMessageLevels) + (EntryCount - 1)
-        If LogMessageLevels(cnt) <> LoggingLevels.NoAssignment Then
-            If LogMessageLevels(cnt) >= Me.ConduitLoggingLevel Then
-                Print #pFileNum, FormatMessage(pMessageTemplate, LogMessageLevels(cnt), Messages(cnt))
-            End If
-        End If
-    Next
+    If LogArtifact.LoggingLevel >= Me.ConduitLoggingLevel Then
+        Print #pFileNum, LogArtifact.FormatArtifact(pMessageTemplate)
+    End If
     If Not logFileIsOpen Then CloseLogFile
 End Sub
 
 '*******************************************************************************
-' Formats the log message and its metadata.
+' Channels an array of LogArtifacts to their destinations.
 '*******************************************************************************
-Private Function FormatMessage(MessageTemplate As String, LoggingLevel As LoggingLevels, Message As String)
-    FormatMessage = UCase(MessageTemplate)
-    FormatMessage = Replace(FormatMessage, "#LOGGINGLEVEL#", pLoggingLevelNames(LoggingLevel))
-    FormatMessage = Replace(FormatMessage, "#DATE#", DateTime.Date)
-    FormatMessage = Replace(FormatMessage, "#TIME#", DateTime.Time)
-    FormatMessage = Replace(FormatMessage, "#TIMESTAMP#", DateTime.Now)
-    FormatMessage = Replace(FormatMessage, "#MESSAGE#", Message)
-End Function
+Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
+    Dim cnt As Long
+    Dim logFileIsOpen As Boolean
+    
+    logFileIsOpen = Me.LogFileOpen
+    
+    If Not logFileIsOpen Then OpenLogFile
+    For cnt = LBound(LogArtifacts) To UBound(LogArtifacts)
+        If LogArtifacts(cnt).LoggingLevel >= Me.ConduitLoggingLevel Then
+            Print #pFileNum, LogArtifacts(cnt).FormatArtifact(pMessageTemplate)
+        End If
+    Next
+    If Not logFileIsOpen Then CloseLogFile
+End Sub
 
 '*******************************************************************************
 ' Gets the file name from a file path.
@@ -392,18 +374,17 @@ Property Get ILogConduit_MessageTemplate() As String
     ILogConduit_MessageTemplate = pMessageTemplate
 End Property
 
-Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, ConduitName As String, ConduitLoggingLevel As LoggingLevels)
+Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
     Me.InitConduit ParentLogger, ConduitName, ConduitLoggingLevel
 End Sub
 
-Sub ILogConduit_ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
-    Me.ChannelLogEntry LogMessageLevel, Message
+Sub ILogConduit_ChannelLogArtifact(LogArtifact As cEvoArtifact)
+    Me.ChannelLogArtifact LogArtifact
 End Sub
 
-Sub ILogConduit_ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
-    Me.ChannelLogEntries LogMessageLevels, Messages, EntryCount
+Sub ILogConduit_ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
+    Me.ChannelLogArtifacts LogArtifacts
 End Sub
-
 
 
 

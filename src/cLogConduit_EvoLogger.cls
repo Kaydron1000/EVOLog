@@ -107,31 +107,22 @@ End Sub
 ' Initializes properties of the conduit. Initializes everything for the
 ' channeling to an EvoLogger except for the parent cEvoLogger object.
 '*******************************************************************************
-Sub Init(EvoLogger As cEvoLogger, ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
+Sub Init(EvoLogger As cEvoLogger, ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose)
     Set pEvoLogger = EvoLogger
     
     Me.ConduitName = ConduitName
-    
-    If ConduitLoggingLevel = NoAssignment Then
-        Me.ConduitLoggingLevel = pDefaultLoggingLevel
-    Else
-        Me.ConduitLoggingLevel = ConduitLoggingLevel
-    End If
+    Me.ConduitLoggingLevel = ConduitLoggingLevel
 End Sub
 Sub ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
-    pEvoLogger.LogEntry LogMessageLevel, Message
+    pEvoLogger.LogArtifact
 End Sub
 Sub ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
     
 End Sub
-Private Function FormatMessage(MessageTemplate As String, LoggingLevel As LoggingLevels, Message As String)
-    FormatMessage = UCase(MessageTemplate)
-    FormatMessage = Replace(FormatMessage, "#LOGGINGLEVEL#", pLoggingLevelNames(LoggingLevel))
-    FormatMessage = Replace(FormatMessage, "#DATE#", DateTime.Date)
-    FormatMessage = Replace(FormatMessage, "#TIME#", DateTime.Time)
-    FormatMessage = Replace(FormatMessage, "#TIMESTAMP#", DateTime.Now)
-    FormatMessage = Replace(FormatMessage, "#MESSAGE#", Message)
-End Function
+
+'*******************************************************************************
+' Class initialize method
+'*******************************************************************************
 Private Sub Class_Initialize()
     pMessageTemplate = "[$#LOGGINGLEVEL#] [#DATE# $TIME#]: $MESSAGE#"
     Set pParentLoggers = New cEvoLoggers
@@ -145,6 +136,12 @@ Private Sub Class_Initialize()
     pLoggingLevelNames.Add "Error", "Error"
     pLoggingLevelNames.Add "Fatal", "Fatal"
 End Sub
+
+
+'*******************************************************************************
+' Implementing ILogConduit Interface Methods and Properties
+'*******************************************************************************
+
 
 Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
     Set ILogConduit_ParentEvoLoggers = Me.ParentEvoLoggers
@@ -170,16 +167,16 @@ Property Get ILogConduit_MessageTemplate() As String
     ILogConduit_MessageTemplate = pMessageTemplate
 End Property
 
-Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, ConduitName As String, ConduitLoggingLevel As LoggingLevels)
+Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
     Me.InitConduit ParentLogger, ConduitName, ConduitLoggingLevel
 End Sub
 
-Sub ILogConduit_ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
-    Me.ChannelLogEntry LogMessageLevel, Message
+Sub ILogConduit_ChannelLogArtifact(LogArtifact As cEvoArtifact)
+    Me.ChannelLogArtifact LogArtifact
 End Sub
 
-Sub ILogConduit_ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
-    Me.ChannelLogEntries LogMessageLevels, Messages, EntryCount
+Sub ILogConduit_ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
+    Me.ChannelLogArtifacts LogArtifacts
 End Sub
 
 

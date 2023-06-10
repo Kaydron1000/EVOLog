@@ -43,8 +43,6 @@ Dim pConduitLoggingLevel As LoggingLevels
 Dim pDefaultLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
 
-Dim pLoggingLevelNames As Collection
-
 Dim pTextBox As MSForms.TextBox
 
 '*******************************************************************************
@@ -118,33 +116,28 @@ Sub Init(TextBox As MSForms.TextBox, ConduitName As String, Optional ConduitLogg
 End Sub
 
 '*******************************************************************************
-' Channels a single log entry to its destination.
+' Channels a single LogArtifact to its destination.
 '*******************************************************************************
-Sub ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
-    If LogMessageLevel <> LoggingLevels.NoAssignment Then
-        If LogMessageLevel >= Me.ConduitLoggingLevel Then
-            pTextBox.Text = pTextBox.Text & FormatMessage(pMessageTemplate, LogMessagelLevel, Message) & vbNewLine
-        End If
+Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
+    If LogArtifact.LoggingLevel >= Me.ConduitLoggingLevel Then
+        pTextBox.Text = pTextBox.Text & LogArtifact.FormatArtifact(pMessageTemplate) & vbNewLine
     End If
 End Sub
 
 '*******************************************************************************
-' Channels an array of log entries to their destinations.
+' Channels an array of LogArtifacts to their destinations.
 '*******************************************************************************
-Sub ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
+Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     Dim cnt As Long
     Dim sendStrg As String
     Dim sb As cStringBuilder
     
     Set sb = New cStringBuilder
-    If UBound(LogMessageLevels) + 1 < LBound(LogMessageLevels) + EntryCount And UBound(Messages) + 1 < LBound(Messages) + EntryCount Then Err.Raise 440
     
     sb.Append pTextBox.Text
-    For cnt = LBound(LogMessageLevels) To LBound(LogMessageLevels) + (EntryCount - 1)
-        If LogMessageLevels(cnt) <> LoggingLevels.NoAssignment Then
-            If LogMessageLevels(cnt) >= Me.ConduitLoggingLevel Then
-                sb.Append FormatMessage(pMessageTemplate, LogMessageLevels(cnt), Messages(cnt)) & vbNewLine
-            End If
+    For cnt = LBound(LogArtifacts) To UBound(LogArtifacts)
+        If LogArtifacts(cnt).LoggingLevel >= Me.ConduitLoggingLevel Then
+            sb.Append LogArtifacts(cnt).FormatArtifact(pMessageTemplate) & vbNewLine
         End If
     Next
     
@@ -152,32 +145,11 @@ Sub ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String,
 End Sub
 
 '*******************************************************************************
-' Formats the log message and its metadata.
-'*******************************************************************************
-Private Function FormatMessage(MessageTemplate As String, LoggingLevel As LoggingLevels, Message As String)
-    FormatMessage = UCase(MessageTemplate)
-    FormatMessage = Replace(FormatMessage, "#LOGGINGLEVEL#", pLoggingLevelNames(LoggingLevel))
-    FormatMessage = Replace(FormatMessage, "#DATE#", DateTime.Date)
-    FormatMessage = Replace(FormatMessage, "#TIME#", DateTime.Time)
-    FormatMessage = Replace(FormatMessage, "#TIMESTAMP#", DateTime.Now)
-    FormatMessage = Replace(FormatMessage, "#MESSAGE#", Message)
-End Function
-
-'*******************************************************************************
 ' Class initialize method
 '*******************************************************************************
 Private Sub Class_Initialize()
     pMessageTemplate = "[$#LOGGINGLEVEL#] [#DATE# $TIME#]: $MESSAGE#"
     Set pParentLoggers = New cEvoLoggers
-    
-    Set pLoggingLevelNames = New Collection
-    pDefaultLoggingLevel = Information
-    pLoggingLevelNames.Add "Verbose", "Verbose"
-    pLoggingLevelNames.Add "Debugg", "Debugg"
-    pLoggingLevelNames.Add "Information", "Information"
-    pLoggingLevelNames.Add "Warning", "Warning"
-    pLoggingLevelNames.Add "Error", "Error"
-    pLoggingLevelNames.Add "Fatal", "Fatal"
 End Sub
 
 
@@ -211,16 +183,16 @@ Property Get ILogConduit_MessageTemplate() As String
     ILogConduit_MessageTemplate = pMessageTemplate
 End Property
 
-Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, ConduitName As String, ConduitLoggingLevel As LoggingLevels)
+Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
     Me.InitConduit ParentLogger, ConduitName, ConduitLoggingLevel
 End Sub
 
-Sub ILogConduit_ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
-    Me.ChannelLogEntry LogMessageLevel, Message
+Sub ILogConduit_ChannelLogArtifact(LogArtifact As cEvoArtifact)
+    Me.ChannelLogArtifact LogArtifact
 End Sub
 
-Sub ILogConduit_ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
-    Me.ChannelLogEntries LogMessageLevels, Messages, EntryCount
+Sub ILogConduit_ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
+    Me.ChannelLogArtifacts LogArtifacts
 End Sub
 
 

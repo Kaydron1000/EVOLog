@@ -60,10 +60,10 @@ End Property
 Sub InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
 End Sub
 
-Sub ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
+Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
 End Sub
 
-Sub ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
+Sub ChannelLogArtifacts(LogArtifact() As cEvoArtifact)
 End Sub
 
 
