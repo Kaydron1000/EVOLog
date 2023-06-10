@@ -38,12 +38,15 @@ Option Explicit
 Implements ILogChannel
 
 Private Const constConduitFileExtension As String = "xlsx"
+
 Dim pParentLoggers As cEvoLoggers
-Dim pLoggingLevelNames As Collection
-Dim pDefaultLoggingLevel As LoggingLevels
 Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
+Dim pDefaultLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
+
+Dim pLoggingLevelNames As Collection
+
 Dim pDefaultHeaders() As String
 Dim pLoggingWB As Workbook
 Dim pLoggingSht As Worksheet

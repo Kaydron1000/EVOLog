@@ -38,37 +38,60 @@ Option Explicit
 Implements ILogConduit
 
 Dim pParentLoggers As cEvoLoggers
-Dim pLoggingLevelNames As Collection
-Dim pDefaultLoggingLevel As LoggingLevels
 Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
+Dim pDefaultLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
+
+Dim pLoggingLevelNames As Collection
+
 Dim pTextBox As MSForms.TextBox
 
+'*******************************************************************************
+' Parent Loggers that log messages are channeled from.
+'*******************************************************************************
 Public Property Get ParentLoggers() As cEvoLoggers
     Set ParentLoggers = pParentLoggers
 End Property
 
+'*******************************************************************************
+' ILogConduit Name
+'*******************************************************************************
 Property Get ConduitName() As String
     ConduitName = pConduitName
 End Property
 
+'*******************************************************************************
+' Set the logging level that is channeled from this conduit.
+'*******************************************************************************
 Property Let ConduitLoggingLevel(Level As LoggingLevels)
     pConduitLoggingLevel = Level
 End Property
 
+'*******************************************************************************
+' Get the logging level that is channeled from this conduit.
+'*******************************************************************************
 Property Get ConduitLoggingLevel() As LoggingLevels
     ConduitLoggingLevel = pConduitLoggingLevel
 End Property
 
+'*******************************************************************************
+' Set the message template that describes the format of the log message.
+'*******************************************************************************
 Property Let MessageTemplate(Template As String)
     pMessageTemplate = Template
 End Property
 
+'*******************************************************************************
+' Get the message template that describes the format of the log message.
+'*******************************************************************************
 Property Get MessageTemplate() As String
     MessageTemplate = pMessageTemplate
 End Property
 
+'*******************************************************************************
+' Initializes properties of the conduit. Meant for when adding to a cEvoLogger.
+'*******************************************************************************
 Sub InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
     pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
       
@@ -78,6 +101,11 @@ Sub InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As Logg
         Me.ConduitLoggingLevel = ConduitLoggingLevel
     End If
 End Sub
+
+'*******************************************************************************
+' Initializes properties of the conduit. Initializes everything for the
+' channeling to a Textbox except for the parent cEvoLogger object.
+'*******************************************************************************
 Sub Init(TextBox As MSForms.TextBox, ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
     Set pTextBox = TextBox
     Me.ConduitName = ConduitName
@@ -89,6 +117,9 @@ Sub Init(TextBox As MSForms.TextBox, ConduitName As String, Optional ConduitLogg
     End If
 End Sub
 
+'*******************************************************************************
+' Channels a single log entry to its destination.
+'*******************************************************************************
 Sub ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
     If LogMessageLevel <> LoggingLevels.NoAssignment Then
         If LogMessageLevel >= Me.ConduitLoggingLevel Then
@@ -96,6 +127,10 @@ Sub ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
         End If
     End If
 End Sub
+
+'*******************************************************************************
+' Channels an array of log entries to their destinations.
+'*******************************************************************************
 Sub ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
     Dim cnt As Long
     Dim sendStrg As String
@@ -115,6 +150,10 @@ Sub ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String,
     
     pTextBox.Text = sb.toString
 End Sub
+
+'*******************************************************************************
+' Formats the log message and its metadata.
+'*******************************************************************************
 Private Function FormatMessage(MessageTemplate As String, LoggingLevel As LoggingLevels, Message As String)
     FormatMessage = UCase(MessageTemplate)
     FormatMessage = Replace(FormatMessage, "#LOGGINGLEVEL#", pLoggingLevelNames(LoggingLevel))
@@ -123,6 +162,10 @@ Private Function FormatMessage(MessageTemplate As String, LoggingLevel As Loggin
     FormatMessage = Replace(FormatMessage, "#TIMESTAMP#", DateTime.Now)
     FormatMessage = Replace(FormatMessage, "#MESSAGE#", Message)
 End Function
+
+'*******************************************************************************
+' Class initialize method
+'*******************************************************************************
 Private Sub Class_Initialize()
     pMessageTemplate = "[$#LOGGINGLEVEL#] [#DATE# $TIME#]: $MESSAGE#"
     Set pParentLoggers = New cEvoLoggers
@@ -136,6 +179,13 @@ Private Sub Class_Initialize()
     pLoggingLevelNames.Add "Error", "Error"
     pLoggingLevelNames.Add "Fatal", "Fatal"
 End Sub
+
+
+
+'*******************************************************************************
+' Implementing ILogConduit Interface Methods and Properties
+'*******************************************************************************
+
 
 Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
     Set ILogConduit_ParentEvoLoggers = Me.ParentEvoLoggers

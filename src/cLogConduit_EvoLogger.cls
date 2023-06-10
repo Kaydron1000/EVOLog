@@ -37,39 +37,62 @@ Attribute VB_Exposed = False
 Option Explicit
 
 Implements ILogConduit
-Dim pEvoLogger As cEvoLogger
 
-Dim pParentLoggers As Collection
-Dim pLoggingLevelNames As Collection
-Dim pDefaultLoggingLevel As LoggingLevels
+Dim pParentLoggers As cEvoLoggers
 Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
+Dim pDefaultLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
 
+Dim pLoggingLevelNames As Collection
+
+Dim pEvoLogger As cEvoLogger
+
+'*******************************************************************************
+' Parent Loggers that log messages are channeled from.
+'*******************************************************************************
 Public Property Get ParentLoggers() As cEvoLoggers
-    Set ParentLoggers = pParentLoggers
+    Set ParentLogger = pParentLogger
 End Property
 
+'*******************************************************************************
+' ILogConduit Name
+'*******************************************************************************
 Property Get ConduitName() As String
     ConduitName = pConduitName
 End Property
 
+'*******************************************************************************
+' Set the logging level that is channeled from this conduit.
+'*******************************************************************************
 Property Let ConduitLoggingLevel(Level As LoggingLevels)
     pConduitLoggingLevel = Level
 End Property
 
+'*******************************************************************************
+' Get the logging level that is channeled from this conduit.
+'*******************************************************************************
 Property Get ConduitLoggingLevel() As LoggingLevels
     ConduitLoggingLevel = pConduitLoggingLevel
 End Property
 
+'*******************************************************************************
+' Set the message template that describes the format of the log message.
+'*******************************************************************************
 Property Let MessageTemplate(Template As String)
     pMessageTemplate = Template
 End Property
 
+'*******************************************************************************
+' Get the message template that describes the format of the log message.
+'*******************************************************************************
 Property Get MessageTemplate() As String
     MessageTemplate = pMessageTemplate
 End Property
 
+'*******************************************************************************
+' Initializes properties of the conduit. Meant for when adding to a cEvoLogger.
+'*******************************************************************************
 Sub InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
     pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
     
@@ -79,6 +102,11 @@ Sub InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As Logg
         Me.ConduitLoggingLevel = ConduitLoggingLevel
     End If
 End Sub
+
+'*******************************************************************************
+' Initializes properties of the conduit. Initializes everything for the
+' channeling to an EvoLogger except for the parent cEvoLogger object.
+'*******************************************************************************
 Sub Init(EvoLogger As cEvoLogger, ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
     Set pEvoLogger = EvoLogger
     

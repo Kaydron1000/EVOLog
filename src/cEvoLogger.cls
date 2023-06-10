@@ -60,6 +60,7 @@ Private pActiveConduits As cLogConduits
 Private pLoggingLevelNames As Collection
 Private pBatchedLoggingLevels() As LoggingLevels
 Private pBatchedLogMessages() As String
+Private pBatchedLogDateTime() As DateTime
 Private pBatchSetCount As Integer
 Private pBatchOutput As Boolean
 Private pNextBatchCnt As Integer
@@ -261,6 +262,7 @@ Private Sub Class_Initialize()
     pBatchSetCount = 20
     ReDim pBatchedLoggingLevels(0 To pBatchSetCount - 1)
     ReDim pBatchedLogMessages(0 To pBatchSetCount - 1)
+    ReDim pBatchedLogDateTime(0 To pBatchSetCount - 1)
     pBatchOutput = True
     pLoggerName = GUID()
 End Sub
