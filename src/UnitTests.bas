@@ -8,10 +8,7 @@ Sub UnitTest_cEvoLogger_Init()
     Dim coll As Collection
     Dim ConduitObj As ILogConduit
     
-    Dim logCounter As cLogConduit_Counter
-    
     Set logger = New cEvoLogger
-    Set logCounter = New cLogConduit_Counter
     
     logger.Init "MyName"
     logger.BatchOutput = False
@@ -59,7 +56,52 @@ Sub UnitTest_cEvoLogger_Init()
     errNum = Err.Number
     On Error GoTo 0
     If errNum = 0 Then Err.Raise -1, "UnitTest_cEvoLogger_Init - logger.RemoveConduit", "Error should have occcured, but it didn't"
-    
-    
 End Sub
 
+Sub UnitTest_cLogConduit_Counter_Init()
+    Dim logger As cEvoLogger
+    Dim cnt As Variant
+    Dim strg As String
+    Dim errNum As Integer
+    Dim coll As Collection
+    Dim ConduitObj As ILogConduit
+    Dim logCounter As cLogConduit_Counter
+    
+    Set logger = New cEvoLogger
+    Set logCounter = New cLogConduit_Counter
+    
+    
+    logger.Init "Logger"
+    logCounter.Init "GBL_Counter"
+    
+    logger.AddConduit logCounter
+    
+    For cnt = 1 To logger.LoggingLevelNames.Count
+        logger.LogArtifact CInt(cnt), logger.LoggingLevelNames(cnt) & " Message"
+    Next
+    logger.FlushBatchedLogArtifacts
+    Debug.Print logCounter.LogCountsToString
+End Sub
+Sub UnitTest_cLogConduit_Immediate_Init()
+    Dim logger As cEvoLogger
+    Dim cnt As Variant
+    Dim strg As String
+    Dim errNum As Integer
+    Dim coll As Collection
+    Dim ConduitObj As ILogConduit
+    Dim logCond As cLogConduit_Immediate
+    
+    Set logger = New cEvoLogger
+    Set logCond = New cLogConduit_Immediate
+    
+    
+    logger.Init "Logger"
+    logger.BatchSetCount = 3
+    
+    logger.AddConduit logCond
+    logger.LogArtifact Error, "This is an error"
+    logger.LogArtifact Debugg, "This is debug"
+    logger.LogArtifact Verbose, "This is Verbose"
+    logger.LogArtifact Information, "This is info"
+    logger.FlushBatchedLogArtifacts
+End Sub

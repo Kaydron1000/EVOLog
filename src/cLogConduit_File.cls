@@ -35,14 +35,13 @@ Attribute VB_Exposed = False
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
-Implements ILogChannel
+Implements ILogConduit
 
 Private Const constConduitFileExtension As String = "txt"
 
 Dim pParentLoggers As cEvoLoggers
 Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
-Dim pDefaultLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
 
 Dim pLoggingLevelNames As Collection
@@ -133,21 +132,15 @@ End Property
 '*******************************************************************************
 ' Initializes properties of the conduit. Meant for when adding to a cEvoLogger.
 '*******************************************************************************
-Sub InitConduit(ParentLogger As cLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
+Private Sub InitConduit(ParentLogger As cLogger)
     pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
-      
-    If ConduitLoggingLevel = NoAssignment Then
-        Me.ConduitLoggingLevel = pDefaultLoggingLevel
-    Else
-        Me.ConduitLoggingLevel = ConduitLoggingLevel
-    End If
 End Sub
 
 '*******************************************************************************
 ' Initializes properties of the conduit. Initializes everything for the
 ' channeling to a file except for the parent cEvoLogger object.
 '*******************************************************************************
-Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment, Optional LogFileName As String = "{DATETIME}_{CONDUITNAME}", _
+Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose, Optional LogFileName As String = "{DATETIME}_{CONDUITNAME}", _
          Optional LogFolderPath As String = "LogOutput", Optional FileAccess As FileAccesses = FileAccesses.Append)
     
     Dim fileExists As Boolean
@@ -227,7 +220,7 @@ End Sub
 '*******************************************************************************
 ' Channels a single LogArtifact to its destination.
 '*******************************************************************************
-Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
+Private Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
     Dim logFileIsOpen As Boolean
     
     logFileIsOpen = Me.LogFileOpen
@@ -242,7 +235,7 @@ End Sub
 '*******************************************************************************
 ' Channels an array of LogArtifacts to their destinations.
 '*******************************************************************************
-Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
+Private Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     Dim cnt As Long
     Dim logFileIsOpen As Boolean
     
@@ -324,10 +317,9 @@ End Function
 '*******************************************************************************
 Private Sub Class_Initialize()
     pMessageTemplate = "[#LOGGINGLEVEL#] [#DATE# #TIME#]: #MESSAGE#"
-    Set pParentLoggers = New Collection
+    Set pParentLoggers = New cEvoLoggers
     
     Set pLoggingLevelNames = New Collection
-    pDefaultLoggingLevel = Verbose
     pLoggingLevelNames.Add "Verbose", "Verbose"
     pLoggingLevelNames.Add "Debugg", "Debugg"
     pLoggingLevelNames.Add "Information", "Information"
@@ -344,47 +336,43 @@ Private Sub Class_Terminate()
 End Sub
 
 
-
 '*******************************************************************************
 ' Implementing ILogConduit Interface Methods and Properties
 '*******************************************************************************
 
 
-Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
+Private Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
     Set ILogConduit_ParentEvoLoggers = Me.ParentEvoLoggers
 End Property
 
-Property Get ILogConduit_ConduitName() As String
+Private Property Get ILogConduit_ConduitName() As String
     ILogConduit_ConduitName = Me.ConduitName
 End Property
 
-Property Let ILogConduit_ConduitLoggingLevel(Level As LoggingLevels)
+Private Property Let ILogConduit_ConduitLoggingLevel(Level As LoggingLevels)
     pConduitLoggingLevel = ILogConduit_ConduitLoggingLevel
 End Property
 
-Property Get ILogConduit_ConduitLoggingLevel() As LoggingLevels
+Private Property Get ILogConduit_ConduitLoggingLevel() As LoggingLevels
     ILogConduit_ConduitLoggingLevel = pConduitLoggingLevel
 End Property
 
-Property Let ILogConduit_MessageTemplate(Template As String)
+Private Property Let ILogConduit_MessageTemplate(Template As String)
     pMessageTemplate = ILogConduit_MessageTemplate
 End Property
 
-Property Get ILogConduit_MessageTemplate() As String
+Private Property Get ILogConduit_MessageTemplate() As String
     ILogConduit_MessageTemplate = pMessageTemplate
 End Property
 
-Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
-    Me.InitConduit ParentLogger, ConduitName, ConduitLoggingLevel
+Private Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger)
+    InitConduit ParentLogger
 End Sub
 
-Sub ILogConduit_ChannelLogArtifact(LogArtifact As cEvoArtifact)
-    Me.ChannelLogArtifact LogArtifact
+Private Sub ILogConduit_ChannelLogArtifact(LogArtifact As cEvoArtifact)
+    ChannelLogArtifact LogArtifact
 End Sub
 
-Sub ILogConduit_ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
-    Me.ChannelLogArtifacts LogArtifacts
+Private Sub ILogConduit_ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
+    ChannelLogArtifacts LogArtifacts
 End Sub
-
-
-

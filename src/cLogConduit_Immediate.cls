@@ -2,7 +2,7 @@ VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
-Attribute VB_Name = "cLogConduit_TextBox"
+Attribute VB_Name = "cLogConduit_Immediate"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
@@ -31,10 +31,11 @@ Attribute VB_Exposed = False
 ''Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-''This log conduit channels log messages to a MSForms.Textbox.
+''This log conduit re-channels log messages to another EvoLogger.
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
+
 Implements ILogConduit
 
 Dim pParentLoggers As cEvoLoggers
@@ -42,13 +43,13 @@ Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
 
-Dim pTextBox As MSForms.TextBox
+Dim pLoggingLevelNames As Collection
 
 '*******************************************************************************
 ' Parent Loggers that log messages are channeled from.
 '*******************************************************************************
 Public Property Get ParentLoggers() As cEvoLoggers
-    Set ParentLoggers = pParentLoggers
+    Set ParentLogger = pParentLogger
 End Property
 
 '*******************************************************************************
@@ -94,22 +95,17 @@ Private Sub InitConduit(ParentLogger As cEvoLogger)
 End Sub
 
 '*******************************************************************************
-' Initializes properties of the conduit. Initializes everything for the
-' channeling to a Textbox except for the parent cEvoLogger object.
+' Initializes properties of the conduit.
 '*******************************************************************************
-Sub Init(TextBox As MSForms.TextBox, ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Information)
-    Set pTextBox = TextBox
-    Me.ConduitName = ConduitName
-    
+Sub Init(Optional ConduitLoggingLevel As LoggingLevels = Debugg)
     Me.ConduitLoggingLevel = ConduitLoggingLevel
 End Sub
-
 '*******************************************************************************
 ' Channels a single LogArtifact to its destination.
 '*******************************************************************************
 Private Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
     If LogArtifact.LoggingLevel >= Me.ConduitLoggingLevel Then
-        pTextBox.Text = pTextBox.Text & LogArtifact.FormatArtifact(pMessageTemplate) & vbNewLine
+        Debug.Print LogArtifact.FormatArtifact(pMessageTemplate)
     End If
 End Sub
 
@@ -123,22 +119,28 @@ Private Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     
     Set sb = New cStringBuilder
     
-    sb.Append pTextBox.Text
     For cnt = LBound(LogArtifacts) To UBound(LogArtifacts)
-        If LogArtifacts(cnt).LoggingLevel >= Me.ConduitLoggingLevel Then
-            sb.Append LogArtifacts(cnt).FormatArtifact(pMessageTemplate) & vbNewLine
+        If LogArtifacts(cnt).Charged Then
+            If LogArtifacts(cnt).LoggingLevel >= Me.ConduitLoggingLevel Then
+                sb.Append LogArtifacts(cnt).FormatArtifact(pMessageTemplate)
+            End If
         End If
     Next
     
-    pTextBox.Text = sb.ToString
+    Debug.Print sb.ToString(vbNewLine)
 End Sub
 
-'*******************************************************************************
-' Class initialize method
-'*******************************************************************************
 Private Sub Class_Initialize()
-    pMessageTemplate = "[$#LOGGINGLEVEL#] [#DATE# $TIME#]: $MESSAGE#"
+    pMessageTemplate = "[#LOGGINGLEVEL#] [#DATE# #TIME#]: #MESSAGE#"
     Set pParentLoggers = New cEvoLoggers
+    
+    Set pLoggingLevelNames = New Collection
+    pLoggingLevelNames.Add "Verbose", "Verbose"
+    pLoggingLevelNames.Add "Debugg", "Debugg"
+    pLoggingLevelNames.Add "Information", "Information"
+    pLoggingLevelNames.Add "Warning", "Warning"
+    pLoggingLevelNames.Add "Error", "Error"
+    pLoggingLevelNames.Add "Fatal", "Fatal"
 End Sub
 
 
@@ -182,3 +184,5 @@ End Sub
 Private Sub ILogConduit_ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     ChannelLogArtifacts LogArtifacts
 End Sub
+
+

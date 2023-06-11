@@ -50,13 +50,22 @@ Public Function FormatArtifact(MessageTemplate As String, Optional TimeStampForm
                                Optional DateFormatString As Variant = "mm/dd/yy", Optional TimeFormatString As Variant = "hh:mm:ss") As String
     FormatArtifact = UCase(MessageTemplate)
     FormatArtifact = Replace(FormatArtifact, "#LOGGINGLEVEL#", pLoggingLevelNames(LoggingLevel))
-    FormatArtifact = Replace(FormatArtifact, "#DATE#", Format(TimeStamp.Date, DateFormatString))
-    FormatArtifact = Replace(FormatArtifact, "#TIME#", Format(TimeStamp.Time, TimeFormatString))
-    FormatArtifact = Replace(FormatArtifact, "#TIMESTAMP#", Format(TimeStamp, TimeStampFormatString))
+    FormatArtifact = Replace(FormatArtifact, "#DATE#", Format(TimeStamp, DateFormatString))
+    FormatArtifact = Replace(FormatArtifact, "#TIME#", Format(TimeStamp, TimeFormatString) & Right(Format(Timer, "0.000"), 4))
+    FormatArtifact = Replace(FormatArtifact, "#TIMESTAMP#", Format(TimeStamp, TimeStampFormatString) & Right(Format(Timer, "0.000"), 4))
     FormatArtifact = Replace(FormatArtifact, "#MESSAGE#", Message)
     
+'    s = Format(Now, "yyyy-mm-dd hh:mm:ss") & Right(Format(Timer, "0.000"), 4)
 End Function
 
 Private Sub Class_Initialize()
     Charged = False
+    
+    Set pLoggingLevelNames = New Collection
+    pLoggingLevelNames.Add "Verbose", "Verbose"
+    pLoggingLevelNames.Add "Debugg", "Debugg"
+    pLoggingLevelNames.Add "Information", "Information"
+    pLoggingLevelNames.Add "Warning", "Warning"
+    pLoggingLevelNames.Add "Error", "Error"
+    pLoggingLevelNames.Add "Fatal", "Fatal"
 End Sub

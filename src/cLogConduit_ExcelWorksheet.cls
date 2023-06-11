@@ -42,7 +42,6 @@ Private Const constConduitFileExtension As String = "xlsx"
 Dim pParentLoggers As cEvoLoggers
 Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
-Dim pDefaultLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
 
 Dim pLoggingLevelNames As Collection
@@ -118,16 +117,10 @@ Property Get LogFileName() As String
     LogFileName = pLogFileName
 End Property
 
-Sub InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
+Private Sub InitConduit(ParentLogger As cEvoLogger)
     pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
-      
-    If ConduitLoggingLevel = NoAssignment Then
-        Me.ConduitLoggingLevel = pDefaultLoggingLevel
-    Else
-        Me.ConduitLoggingLevel = ConduitLoggingLevel
-    End If
 End Sub
-Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment, Optional LogFileName As Variant = "{DATETIME}_{LOGGERNAME}_{CONDUITNAME}", _
+Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Information, Optional LogFileName As Variant = "{DATETIME}_{LOGGERNAME}_{CONDUITNAME}", _
          Optional LogFolderPath As Variant = "LogOutput", Optional FileAccess As FileAccesses = FileAccesses.Append, _
          Optional WorksheetName As Variant = "{DATETIME}_{CONDUITNAME}", Optional Headers As Variant = Nothing)
     
@@ -229,7 +222,7 @@ Sub SetTitleAndHeaders(sht As Worksheet, Title As String, Headers() As String)
     sht.Range("A1", sht.Cells(l, UBound(Headers) - LBound(Headers) + 1)).MergeCells = True
     sht.Range("Al1").Value = Title
 End Sub
-Sub ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
+Private Sub ChannelLogArtifact(LogMessageLevel As LoggingLevels, Message As String)
     Dim arr() As String
     Dim templateArr() As String
     Dim maxX As Long, minX As Long
@@ -250,7 +243,7 @@ Sub ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
     pLoggingSht.Cells(pLoggingSht.Rows.Count, 1).End(x1Up).Offset(l, 0).Resize(maxY - minY + 1, maxX - minX + 1).Value = Application.WorksheetFunction.Transpose(TransposeArray(arr))
 End Sub
 
-Sub ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
+Private Sub ChannelLogArtifacts(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
     Dim cnt As Long
     Dim MessageCnt As Integer
     Dim arr() As String
@@ -275,14 +268,6 @@ Sub ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String,
     pLoggingSht.Cells(pLoggingSht.Rows.Count, 1).End(x1Up).Offset(l, 0).Resize(maxY - minY + 1, maxX - minX + 1).Value = Application.WorksheetFunction.Transpose(TransposeArray(arr))
 End Sub
 
-Private Function FormatMessage(MessageTemplate As String, LoggingLevel As LoggingLevels, Message As String)
-    FormatMessage = UCase(MessageTemplate)
-    FormatMessage = Replace(FormatMessage, "#LOGGINGLEVEL#", ParentLogger.LoggingLevelNames(LoggingLevel))
-    FormatMessage = Replace(FormatMessage, "#DATE#", DateTime.Date)
-    FormatMessage = Replace(FormatMessage, "#TIME#", DateTime.Time)
-    FormatMessage = Replace(FormatMessage, "#TIMESTAMP#", DateTime.Now)
-    FormatMessage = Replace(FormatMessage, "#MESSAGE#", Message)
-End Function
 Private Function TransposeArray(MyArray As Variant) As Variant
     Dim X As Long, Y As Long
     Dim maxX As Long, minX As Long
@@ -369,7 +354,7 @@ Private Sub Class_Initialize()
     pDefaultHeaders(l) = "Time Stamp"
     pDefaultHeaders(2) = "Log Message"
     
-    Set pParentLoggers = New Collection
+    Set pParentLoggers = New cEvoLoggers
     
     Set pLoggingLevelNames = New Collection
     pDefaultLoggingLevel = Information
@@ -393,42 +378,39 @@ End Sub
 '*******************************************************************************
 
 
-Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
+Private Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
     Set ILogConduit_ParentEvoLoggers = Me.ParentEvoLoggers
 End Property
 
-Property Get ILogConduit_ConduitName() As String
+Private Property Get ILogConduit_ConduitName() As String
     ILogConduit_ConduitName = Me.ConduitName
 End Property
 
-Property Let ILogConduit_ConduitLoggingLevel(Level As LoggingLevels)
+Private Property Let ILogConduit_ConduitLoggingLevel(Level As LoggingLevels)
     pConduitLoggingLevel = ILogConduit_ConduitLoggingLevel
 End Property
 
-Property Get ILogConduit_ConduitLoggingLevel() As LoggingLevels
+Private Property Get ILogConduit_ConduitLoggingLevel() As LoggingLevels
     ILogConduit_ConduitLoggingLevel = pConduitLoggingLevel
 End Property
 
-Property Let ILogConduit_MessageTemplate(Template As String)
+Private Property Let ILogConduit_MessageTemplate(Template As String)
     pMessageTemplate = ILogConduit_MessageTemplate
 End Property
 
-Property Get ILogConduit_MessageTemplate() As String
+Private Property Get ILogConduit_MessageTemplate() As String
     ILogConduit_MessageTemplate = pMessageTemplate
 End Property
 
-Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger, Optional ConduitLoggingLevel As LoggingLevels = NoAssignment)
-    Me.InitConduit ParentLogger, ConduitName, ConduitLoggingLevel
+Private Sub ILogConduit_InitConduit(ParentLogger As cEvoLogger)
+    InitConduit ParentLogger
 End Sub
 
-Sub ILogConduit_ChannelLogArtifact(LogArtifact As cEvoArtifact)
-    Me.ChannelLogArtifact LogArtifact
+Private Sub ILogConduit_ChannelLogArtifact(LogArtifact As cEvoArtifact)
+    ChannelLogArtifact LogArtifact
 End Sub
 
-Sub ILogConduit_ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
-    Me.ChannelLogArtifacts LogArtifacts
+Private Sub ILogConduit_ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
+    ChannelLogArtifacts LogArtifacts
 End Sub
-
-
-
 

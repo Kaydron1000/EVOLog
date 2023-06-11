@@ -197,9 +197,9 @@ Sub LogArtifact(LoggingLevel As LoggingLevels, LogMessage As String)
     Dim logConduit As ILogConduit
     Dim artifact As cEvoArtifact
     
-    Set artifact = pbatchedLogartifact(pNextBatchCnt)
+    Set artifact = pBatchedLogArtifacts(pNextBatchCnt)
     artifact.Charged = True
-    artifact.LogLevel = LoggingLevel
+    artifact.LoggingLevel = LoggingLevel
     artifact.Message = LogMessage
     artifact.TimeStamp = Now
     
@@ -226,9 +226,7 @@ Sub FlushBatchedLogArtifacts()
     
     If BatchOutput Then
         For Each logConduit In pActiveConduits
-            For indx = 0 To pNextBatchCnt - 1
-                logConduit.ChannelLogArtifact pBatchedLogArtifacts(indx)
-            Next
+            logConduit.ChannelLogArtifacts pBatchedLogArtifacts
         Next
         
         For indx = 0 To pNextBatchCnt - 1
@@ -277,7 +275,6 @@ Private Sub Class_Initialize()
     pNextBatchCnt = 0
     pBatchOutput = True
     pLoggerName = GUID()
-    
     
     Set pLoggingLevelNames = New Collection
     pLoggingLevelNames.Add "Verbose", "Verbose"
