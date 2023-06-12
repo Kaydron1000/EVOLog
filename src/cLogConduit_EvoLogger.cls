@@ -6,7 +6,7 @@ Attribute VB_Name = "cLogConduit_EvoLogger"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
-Attribute VB_Exposed = False
+Attribute VB_Exposed = True
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''EVOLog - a logging platform for VBA inspired by Serilog Library for .NET.
 ''--------------------------------------
@@ -106,18 +106,30 @@ Sub Init(EvoLogger As cEvoLogger, ConduitName As String, Optional ConduitLogging
     Me.ConduitName = ConduitName
     Me.ConduitLoggingLevel = ConduitLoggingLevel
 End Sub
-Private Sub ChannelLogEntry(LogMessageLevel As LoggingLevels, Message As String)
-    pEvoLogger.LogArtifact
+
+'*******************************************************************************
+' Channels a single LogArtifact to its destination.
+'*******************************************************************************
+Private Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
+    pEvoLogger.LogArtifactObject LogArtifact
 End Sub
-Private Sub ChannelLogEntries(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
+
+'*******************************************************************************
+' Channels an array of LogArtifacts to their destinations.
+'*******************************************************************************
+Private Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
+    Dim cnt As Integer
     
+    For cnt = LBound(LogArtifacts) To UBound(LogArtifacts)
+        ChannelLogArtifact LogArtifacts(cnt)
+    Next
 End Sub
 
 '*******************************************************************************
 ' Class initialize method
 '*******************************************************************************
 Private Sub Class_Initialize()
-    pMessageTemplate = "[$#LOGGINGLEVEL#] [#DATE# $TIME#]: $MESSAGE#"
+    pMessageTemplate = "[#LOGGINGLEVEL#] [#DATE# $TIME#]: $MESSAGE#"
     Set pParentLoggers = New cEvoLoggers
     
     Set pLoggingLevelNames = New Collection

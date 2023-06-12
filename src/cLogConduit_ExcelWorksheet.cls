@@ -6,7 +6,7 @@ Attribute VB_Name = "cLogConduit_ExcelWorksheet"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
-Attribute VB_Exposed = False
+Attribute VB_Exposed = True
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''EVOLog - a logging platform for VBA inspired by Serilog Library for .NET.
 ''--------------------------------------
@@ -35,7 +35,7 @@ Attribute VB_Exposed = False
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
-Implements ILogChannel
+Implements ILogConduit
 
 Private Const constConduitFileExtension As String = "xlsx"
 

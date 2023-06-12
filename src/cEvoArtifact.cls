@@ -6,7 +6,7 @@ Attribute VB_Name = "cEvoArtifact"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
-Attribute VB_Exposed = False
+Attribute VB_Exposed = True
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''EVOLog - a logging platform for VBA inspired by Serilog Library for .NET.
 ''--------------------------------------
@@ -48,6 +48,7 @@ End Function
 
 Public Function FormatArtifact(MessageTemplate As String, Optional TimeStampFormatString As Variant = "yyyymmdd_hhmmss", _
                                Optional DateFormatString As Variant = "mm/dd/yy", Optional TimeFormatString As Variant = "hh:mm:ss") As String
+    ''TODO: Fix milliseconds formatting
     FormatArtifact = UCase(MessageTemplate)
     FormatArtifact = Replace(FormatArtifact, "#LOGGINGLEVEL#", pLoggingLevelNames(LoggingLevel))
     FormatArtifact = Replace(FormatArtifact, "#DATE#", Format(TimeStamp, DateFormatString))

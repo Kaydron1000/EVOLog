@@ -6,7 +6,7 @@ Attribute VB_Name = "cLogConduit_File"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
-Attribute VB_Exposed = False
+Attribute VB_Exposed = True
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''EVOLog - a logging platform for VBA inspired by Serilog Library for .NET.
 ''--------------------------------------
@@ -132,7 +132,7 @@ End Property
 '*******************************************************************************
 ' Initializes properties of the conduit. Meant for when adding to a cEvoLogger.
 '*******************************************************************************
-Private Sub InitConduit(ParentLogger As cLogger)
+Private Sub InitConduit(ParentLogger As cEvoLogger)
     pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
 End Sub
 
@@ -140,22 +140,24 @@ End Sub
 ' Initializes properties of the conduit. Initializes everything for the
 ' channeling to a file except for the parent cEvoLogger object.
 '*******************************************************************************
-Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose, Optional LogFileName As String = "{DATETIME}_{CONDUITNAME}", _
-         Optional LogFolderPath As String = "LogOutput", Optional FileAccess As FileAccesses = FileAccesses.Append)
+Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose, Optional LogFileName As String = "#TIMESTAMP#_#CONDUITNAME#", _
+         Optional LogFolderPath As String = ".\LogOutput", Optional FileAccess As FileAccesses = FileAccesses.Append)
     
     Dim fileExists As Boolean
     Dim fileName As String
     Dim folderPath As String
     
-    folderPath = LogFolderPath
+    pConduitName = ConduitName
+    Me.ConduitLoggingLevel = ConduitLoggingLevel
+    
+    folderPath = BuildPath(LogFolderPath, PATH_SEPARATOR)
     fileName = LogFileName
     ''Checking if LogFolderPath is a valid Folder
-    If Dir(BuildPath(folderPath, "\"), vbDirectory) <> "." Then Err.Raise 76
+    If Dir(BuildPath(folderPath, PATH_SEPARATOR), vbDirectory) <> "." Then Err.Raise 76
     
-    If fileName = "" Then fileName = LogSinkName & "." & constSinkFileExtension
+    fileName = FormatFilePath(fileName)
     
-    fileName = Format(DateTime.Now(), "yyyymmdd_hhmmss_") & fileName
-    fileExists = Len(Dir(BuildPath(folderPath, fileName))) > O
+    fileExists = Len(Dir(BuildPath(folderPath, fileName))) > 0
     
     If fileExists And FileAccess = FileAccesses.Append Then
         pLogFolderPath = folderPath
@@ -181,27 +183,34 @@ Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
     pFileNum = FreeFile
     If FileAccess = FileAccesses.Append Then
         Open LogFilePath For Append As #pFileNum
-        pFileOpen = True
+        Close #pFileNum
+        pFileOpen = False
     ElseIf FileAccess = FileAccesses.CreateNew Or FileAccess = FileAccesses.Overwrite Then
         Open LogFilePath For Output As #pFileNum
-        pFileOpen = True
+        Close #pFileNum
+        pFileOpen = False
     End If
     
     
-    Me.ConduitName = ConduitName
-    
-    If ConduitLoggingLevel = NoAssignment Then
-        Me.ConduitLoggingLevel = pDefaultLoggingLevel
-    Else
-        Me.ConduitLoggingLevel = ConduitLoggingLevel
-    End If
 End Sub
+Private Function FormatFilePath(FilePath As String, Optional TimeStampFormatString As Variant = "yyyymmdd_hhmmss", _
+                               Optional DateFormatString As Variant = "mm/dd/yy", Optional TimeFormatString As Variant = "hh:mm:ss") As String
+    ''TODO: Fix milliseconds formatting
+    FormatFilePath = UCase(FilePath)
+    FormatFilePath = Replace(FormatFilePath, "#LOGGINGLEVEL#", pLoggingLevelNames(ConduitLoggingLevel))
+    FormatFilePath = Replace(FormatFilePath, "#DATE#", Format(Now, DateFormatString))
+    FormatFilePath = Replace(FormatFilePath, "#TIME#", Format(Now, TimeFormatString) & Right(Format(Timer, "0.000"), 4))
+    FormatFilePath = Replace(FormatFilePath, "#TIMESTAMP#", Format(Now, TimeStampFormatString) & Right(Format(Timer, "0.000"), 4))
+    FormatFilePath = Replace(FormatFilePath, "#CONDUITNAME#", Me.ConduitName)
+    
+'    s = Format(Now, "yyyy-mm-dd hh:mm:ss") & Right(Format(Timer, "0.000"), 4)
+End Function
 
 '*******************************************************************************
 ' Open log file manually for append. To close after this command use CloseLogFile.
 '*******************************************************************************
 Sub OpenLogFile()
-    If Not pFileOpen And pFileNum > O Then
+    If Not pFileOpen And pFileNum > 0 Then
         Open LogFilePath For Append As #pFileNum
         pFileOpen = True
     End If
@@ -211,7 +220,7 @@ End Sub
 ' Closes log file if it is open.
 '*******************************************************************************
 Sub CloseLogFile()
-    If pFileOpen And pFileNum > O Then
+    If pFileOpen And pFileNum > 0 Then
         Close #pFileNum
         pFileOpen = False
     End If
@@ -225,11 +234,11 @@ Private Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
     
     logFileIsOpen = Me.LogFileOpen
     
-    If Not logFileIsOpen Then OpenLogFile
     If LogArtifact.LoggingLevel >= Me.ConduitLoggingLevel Then
+        If Not logFileIsOpen Then OpenLogFile
         Print #pFileNum, LogArtifact.FormatArtifact(pMessageTemplate)
+        If Not logFileIsOpen Then CloseLogFile
     End If
-    If Not logFileIsOpen Then CloseLogFile
 End Sub
 
 '*******************************************************************************
@@ -248,6 +257,7 @@ Private Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
         End If
     Next
     If Not logFileIsOpen Then CloseLogFile
+    
 End Sub
 
 '*******************************************************************************
@@ -282,8 +292,9 @@ Private Function GetUniqueLogFileName(LogFolderPath As String, LogFileName As St
     On Error GoTo errMark
         If Dir(BuildPath(folderPath, "\"), vbDirectory) <> "." Then Err.Raise 76
         
-        extStart = InStrRev(fileName, ".")
-        If extStart = 0 Then fileName = fileName & "." & SinkFileExtension
+        If Right(fileName, Len(constConduitFileExtension) + 1) <> "." & constConduitFileExtension Then
+            fileName = fileName & "." & constConduitFileExtension
+        End If
         
         extStart = InStrRev(fileName, ".")
         baseName = Left(fileName, extStart - 1)
@@ -301,7 +312,7 @@ Private Function GetUniqueLogFileName(LogFolderPath As String, LogFileName As St
             Err.Raise 999, "New File Name", "Cannot create log file. Over 1000 instances exist of " & fileName & " exists in " & LogFolderPath & "."
         End If
 errMark:
-        If Err.Number <> O Then
+        If Err.Number <> 0 Then
             Debug.Print Err.Description
             Err.Raise Err.Number
             GetUniqueLogFileName = ""

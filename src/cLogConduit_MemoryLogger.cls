@@ -2,7 +2,7 @@ VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
-Attribute VB_Name = "cLogConduit_Immediate"
+Attribute VB_Name = "cLogConduit_MemoryLogger"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
@@ -31,7 +31,7 @@ Attribute VB_Exposed = True
 ''Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-''This log conduit channels LogArtifacts to Immediate Window.
+''This log conduit channels LogArtifact to an array in memory.
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -43,6 +43,9 @@ Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
 
+Dim pLogArtifactsArray() As cEvoArtifact
+Dim pMemorySize As Integer
+Dim pNextMemoryIndx As Integer
 Dim pLoggingLevelNames As Collection
 
 '*******************************************************************************
@@ -88,6 +91,26 @@ Property Get MessageTemplate() As String
 End Property
 
 '*******************************************************************************
+'
+'*******************************************************************************
+Property Let MemorySize(Size As Integer)
+    If pNextMemoryIndx > Size Then Err.Raise 447
+    
+    pMemorySize = Size
+    ReDim Preserve pLogArtifactsArray(0 To MemorySize - 1)
+End Property
+
+'*******************************************************************************
+'
+'*******************************************************************************
+Property Get MemorySize() As Integer
+    MemorySize = pMemorySize
+End Property
+
+
+
+
+'*******************************************************************************
 ' Initializes properties of the conduit. Meant for when adding to a cEvoLogger.
 '*******************************************************************************
 Private Sub InitConduit(ParentLogger As cEvoLogger)
@@ -97,15 +120,21 @@ End Sub
 '*******************************************************************************
 ' Initializes properties of the conduit.
 '*******************************************************************************
-Sub Init(Optional ConduitLoggingLevel As LoggingLevels = Debugg)
+Sub Init(Optional ConduitLoggingLevel As LoggingLevels = Verbose, Optional InitialMemorySize As Integer = 100)
     Me.ConduitLoggingLevel = ConduitLoggingLevel
+    MemorySize = InitialMemorySize
+    pNextMemoryIndx = 0
 End Sub
+
 '*******************************************************************************
 ' Channels a single LogArtifact to its destination.
 '*******************************************************************************
 Private Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
     If LogArtifact.LoggingLevel >= Me.ConduitLoggingLevel Then
-        Debug.Print LogArtifact.FormatArtifact(pMessageTemplate)
+        If pNextMemoryIndx = pMemorySize Then MemorySize = MemorySize * 2
+          
+        Set pLogArtifactsArray(pNextMemoryIndx) = LogArtifact
+        pNextMemoryIndx = pNextMemoryIndx + 1
     End If
 End Sub
 
@@ -114,31 +143,20 @@ End Sub
 '*******************************************************************************
 Private Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     Dim cnt As Long
-    Dim sendStrg As String
-    Dim sb As cStringBuilder
-    
-    Set sb = New cStringBuilder
     
     For cnt = LBound(LogArtifacts) To UBound(LogArtifacts)
-        If LogArtifacts(cnt).LoggingLevel >= Me.ConduitLoggingLevel Then
-            sb.Append LogArtifacts(cnt).FormatArtifact(pMessageTemplate)
-        End If
+        ChannelLogArtifact LogArtifacts(cnt)
     Next
-    
-    Debug.Print sb.ToString(vbNewLine)
+End Sub
+
+Public Sub ReChannelLogArtifacts(EvoLogger As cEvoLogger)
+    For indx = LBound(pLogArtifactsArray) To pNextMemoryIndx - 1
+        EvoLogger.LogArtifactObject (pLogArtifactsArray(indx))
+    Next
 End Sub
 
 Private Sub Class_Initialize()
-    pMessageTemplate = "[#LOGGINGLEVEL#] [#DATE# #TIME#]: #MESSAGE#"
     Set pParentLoggers = New cEvoLoggers
-    
-    Set pLoggingLevelNames = New Collection
-    pLoggingLevelNames.Add "Verbose", "Verbose"
-    pLoggingLevelNames.Add "Debugg", "Debugg"
-    pLoggingLevelNames.Add "Information", "Information"
-    pLoggingLevelNames.Add "Warning", "Warning"
-    pLoggingLevelNames.Add "Error", "Error"
-    pLoggingLevelNames.Add "Fatal", "Fatal"
 End Sub
 
 
@@ -182,5 +200,6 @@ End Sub
 Private Sub ILogConduit_ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     ChannelLogArtifacts LogArtifacts
 End Sub
+
 
 

@@ -6,7 +6,7 @@ Attribute VB_Name = "cLogConduit_Counter"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
-Attribute VB_Exposed = False
+Attribute VB_Exposed = True
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''EVOLog - a logging platform for VBA inspired by Serilog Library for .NET.
 ''--------------------------------------
@@ -122,7 +122,7 @@ Private Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     Next
 End Sub
 
-Function LogCountsToString() As String
+Function LogCountsToString(Optional ClearCounts As Boolean = False) As String
     Dim LoggingLevelNames As Collection
     Dim entries() As String
     Dim strg As String
@@ -140,9 +140,10 @@ Function LogCountsToString() As String
         End If
     Next
     
+    If ClearCounts Then ClearCounts
+    
     strg = Join(entries, ", ")
 
-    
     LogCountsToString = strg
 End Function
 

@@ -6,7 +6,7 @@ Attribute VB_Name = "cEvoLogger"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
-Attribute VB_Exposed = False
+Attribute VB_Exposed = True
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''EVOLog - a logging platform for VBA inspired by Serilog Library for .NET.
 ''--------------------------------------
@@ -104,16 +104,20 @@ Public Property Let BatchSetCount(BatchCount As Integer)
     Dim indx As Integer
     Dim prevBatchCount As Integer
     
-    If pBatchSetCount <> BatchCount Then
+    If pBatchSetCount < BatchCount Then
         prevBatchCount = pBatchSetCount
         
         pBatchSetCount = BatchCount
         ReDim Preserve pBatchedLogArtifacts(0 To pBatchSetCount - 1)
-        If pBatchSetCount < prevBatchCount Then
-            For indx = prevBatchCount To pBatchSetCount - 1
-                Set pBatchedLogArtifacts(indx) = New cEvoArtifact
-            Next
-        End If
+        For indx = prevBatchCount To pBatchSetCount - 1
+            Set pBatchedLogArtifacts(indx) = New cEvoArtifact
+        Next
+    ElseIf pBatchSetCount > BatchCount Then
+        prevBatchCount = pBatchSetCount
+        FlushBatchedLogArtifacts
+        
+        pBatchSetCount = BatchCount
+        ReDim Preserve pBatchedLogArtifacts(0 To pBatchSetCount - 1)
     End If
 End Property
 
@@ -194,14 +198,19 @@ End Sub
 ''Log a message to all attached conduits.
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Sub LogArtifact(LoggingLevel As LoggingLevels, LogMessage As String)
-    Dim logConduit As ILogConduit
-    Dim artifact As cEvoArtifact
+    Dim Artifact As cEvoArtifact
     
-    Set artifact = pBatchedLogArtifacts(pNextBatchCnt)
-    artifact.Charged = True
-    artifact.LoggingLevel = LoggingLevel
-    artifact.Message = LogMessage
-    artifact.TimeStamp = Now
+    Set Artifact = pBatchedLogArtifacts(pNextBatchCnt)
+    Artifact.Charged = True
+    Artifact.LoggingLevel = LoggingLevel
+    Artifact.Message = LogMessage
+    Artifact.TimeStamp = Now()
+    
+    LogArtifactObject Artifact
+End Sub
+
+Sub LogArtifactObject(Artifact As cEvoArtifact)
+    Dim logConduit As ILogConduit
     
     If pBatchOutput Then
         pNextBatchCnt = pNextBatchCnt + 1
@@ -211,8 +220,8 @@ Sub LogArtifact(LoggingLevel As LoggingLevels, LogMessage As String)
         End If
     Else
         For Each logConduit In pActiveConduits
-            logConduit.ChannelLogArtifact artifact
-            artifact.Charged = False
+            logConduit.ChannelLogArtifact Artifact
+            Artifact.Charged = False
         Next
     End If
 End Sub
@@ -223,12 +232,22 @@ End Sub
 Sub FlushBatchedLogArtifacts()
     Dim logConduit As ILogConduit
     Dim indx As Integer
+    Dim sendArtifacts() As cEvoArtifact
     
-    If BatchOutput Then
-        For Each logConduit In pActiveConduits
-            logConduit.ChannelLogArtifacts pBatchedLogArtifacts
+    If BatchOutput And pNextBatchCnt > 0 Then
+        '' Preping array to send to conduits
+        ReDim sendArtifacts(0 To pNextBatchCnt - 1)
+        For indx = 0 To pNextBatchCnt - 1
+            If pBatchedLogArtifacts(indx).Charged Then _
+               Set sendArtifacts(indx) = pBatchedLogArtifacts(indx)
         Next
         
+        '' Send to conduits
+        For Each logConduit In pActiveConduits
+            logConduit.ChannelLogArtifacts sendArtifacts
+        Next
+        
+        '' Clear charge from artifacts
         For indx = 0 To pNextBatchCnt - 1
             pBatchedLogArtifacts(indx).Charged = False
         Next
@@ -286,3 +305,9 @@ Private Sub Class_Initialize()
 End Sub
 
 
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''Terminate EVOLogger class.
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Private Sub Class_Terminate()
+    FlushBatchedLogArtifacts
+End Sub

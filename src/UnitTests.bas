@@ -94,7 +94,7 @@ Sub UnitTest_cLogConduit_Immediate_Init()
     Set logger = New cEvoLogger
     Set logCond = New cLogConduit_Immediate
     
-    
+    logCond.Init Verbose
     logger.Init "Logger"
     logger.BatchSetCount = 3
     
@@ -102,6 +102,63 @@ Sub UnitTest_cLogConduit_Immediate_Init()
     logger.LogArtifact Error, "This is an error"
     logger.LogArtifact Debugg, "This is debug"
     logger.LogArtifact Verbose, "This is Verbose"
-    logger.LogArtifact Information, "This is info"
+    logger.LogArtifact Information, "This is info1"
+    logger.LogArtifact Information, "This is info2"
+    
+    logger.BatchSetCount = 5
+    
+    logger.LogArtifact Verbose, "This is Verbose1"
+    logger.LogArtifact Debugg, "This is debug1"
+    logger.LogArtifact Error, "This is an error1"
+    
+    logger.LogArtifact Error, "This is an error t1"
+    logger.LogArtifact Error, "This is an error t2"
+    logger.LogArtifact Error, "This is an error t3"
+    
+    logger.BatchSetCount = 2
+    
+    logger.LogArtifact Error, "This is an INFO 1"
     logger.FlushBatchedLogArtifacts
+End Sub
+Sub UnitTest_cLogConduit_File_Init()
+    Dim logger As cEvoLogger
+    Dim cnt As Variant
+    Dim strg As String
+    Dim errNum As Integer
+    Dim coll As Collection
+    Dim ConduitObj As ILogConduit
+    Dim logCond As cLogConduit_File
+    
+    Set logger = New cEvoLogger
+    Set logCond = New cLogConduit_File
+    
+    
+    logger.Init "EvoLogger"
+    logger.BatchSetCount = 3
+    
+    logCond.Init "LogFile", Verbose
+    logCond.OpenLogFile
+    
+    logger.AddConduit logCond
+    logger.LogArtifact Error, "This is an error"
+    logger.LogArtifact Debugg, "This is debug"
+    logger.LogArtifact Verbose, "This is Verbose"
+    logger.LogArtifact Information, "This is info1"
+    logger.LogArtifact Information, "This is info2"
+    Application.Wait Now + #12:00:01 AM#
+    logger.BatchSetCount = 5
+    
+    logger.LogArtifact Verbose, "This is Verbose1"
+    logger.LogArtifact Debugg, "This is debug1"
+    logger.LogArtifact Error, "This is an error1"
+    
+    logger.LogArtifact Error, "This is an error t1"
+    logger.LogArtifact Error, "This is an error t2"
+    logger.LogArtifact Error, "This is an error t3"
+    
+    logger.BatchSetCount = 2
+    
+    logger.LogArtifact Error, "This is an INFO 1"
+    logger.FlushBatchedLogArtifacts
+    logCond.CloseLogFile
 End Sub

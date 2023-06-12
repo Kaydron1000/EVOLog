@@ -6,7 +6,7 @@ Attribute VB_Name = "cStringBuilder"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
-Attribute VB_Exposed = False
+Attribute VB_Exposed = True
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''EVOLog - a logging platform for VBA inspired by Serilog Library for .NET.
 ''--------------------------------------
@@ -60,7 +60,7 @@ Public Function ToString(Optional Separator As String = vbNullString) As String
     If pCurrentIndex > 0 Then
         ReDim Preserve pBuffer(1 To pCurrentIndex)
         pMaxIndex = pCurrentIndex
-        ToString = Join(MyBuffer, Separator)
+        ToString = Join(pBuffer, Separator)
     End If
 
 End Function
