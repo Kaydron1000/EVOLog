@@ -80,7 +80,7 @@ Sub UnitTest_cLogConduit_Counter_Init()
         logger.LogArtifact CInt(cnt), logger.LoggingLevelNames(cnt) & " Message"
     Next
     logger.FlushBatchedLogArtifacts
-    Debug.Print logCounter.LogCountsToString
+    Debug.Print logCounter.LogCountsToString(True)
 End Sub
 Sub UnitTest_cLogConduit_Immediate_Init()
     Dim logger As cEvoLogger
@@ -161,4 +161,57 @@ Sub UnitTest_cLogConduit_File_Init()
     logger.LogArtifact Error, "This is an INFO 1"
     logger.FlushBatchedLogArtifacts
     logCond.CloseLogFile
+End Sub
+Sub UnitTest_cLogConduit_TextBox_Memory_Init()
+    Dim logger As cEvoLogger
+    Dim InitialLogger As cEvoLogger
+    Dim cnt As Variant
+    Dim strg As String
+    Dim errNum As Integer
+    Dim coll As Collection
+    Dim ConduitObj As ILogConduit
+    Dim uf As UserForm1
+    Dim logCond As cLogConduit_TextBox
+    Dim logCond2 As cLogConduit_MemoryLogger
+        
+    
+    Set logger = New cEvoLogger
+    Set InitialLogger = New cEvoLogger
+    Set logCond = New cLogConduit_TextBox
+    Set logCond2 = New cLogConduit_MemoryLogger
+    
+    logCond2.Init "MemoryLogger"
+    
+    InitialLogger.AddConduit logCond2
+    
+    InitialLogger.LogArtifact Information, "Loading Configuration"
+    InitialLogger.LogArtifact Information, "Initializing UI"
+    
+    Set uf = New UserForm1
+    logCond.Init uf.TextBox1, "TextConduit"
+    
+    logger.AddConduit logCond
+    InitialLogger.FlushBatchedLogArtifacts
+    
+    logCond2.ReChannelLogArtifacts logger
+    
+    logger.FlushBatchedLogArtifacts
+    uf.Show
+        
+
+End Sub
+Sub UnitTest_cLogConduit_ExcelWorksheet_Init()
+    Dim logger As cEvoLogger
+    Dim InitialLogger As cEvoLogger
+    Dim cnt As Variant
+    Dim strg As String
+    Dim errNum As Integer
+    Dim coll As Collection
+    Dim ConduitObj As ILogConduit
+    Dim logCond As cLogConduit_ExcelWorksheet
+    
+    Set logger = New cEvoLogger
+    Set logCond = New cLogConduit_ExcelWorksheet
+    
+    logCond.Init "WS_LOG"
 End Sub

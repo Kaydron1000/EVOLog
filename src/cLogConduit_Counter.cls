@@ -140,7 +140,7 @@ Function LogCountsToString(Optional ClearCounts As Boolean = False) As String
         End If
     Next
     
-    If ClearCounts Then ClearCounts
+    If ClearCounts Then Me.ClearCounts
     
     strg = Join(entries, ", ")
 
@@ -148,7 +148,7 @@ Function LogCountsToString(Optional ClearCounts As Boolean = False) As String
 End Function
 
 Sub ClearCounts()
-    ReDim pLogCounts(1 To ParentLogger.LoggingLevelNames.Count)
+    ReDim pLogCounts(1 To pLoggingLevelNames.Count)
 End Sub
 
 Private Sub Class_Initialize()

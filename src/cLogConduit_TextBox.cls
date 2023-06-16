@@ -99,7 +99,7 @@ End Sub
 '*******************************************************************************
 Sub Init(TextBox As MSForms.TextBox, ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Information)
     Set pTextBox = TextBox
-    Me.ConduitName = ConduitName
+    pConduitName = ConduitName
     
     Me.ConduitLoggingLevel = ConduitLoggingLevel
 End Sub
@@ -137,7 +137,7 @@ End Sub
 ' Class initialize method
 '*******************************************************************************
 Private Sub Class_Initialize()
-    pMessageTemplate = "[$#LOGGINGLEVEL#] [#DATE# $TIME#]: $MESSAGE#"
+    pMessageTemplate = "[#LOGGINGLEVEL#] [#DATE# #TIME#]: #MESSAGE#"
     Set pParentLoggers = New cEvoLoggers
 End Sub
 

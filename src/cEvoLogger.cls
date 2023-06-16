@@ -206,10 +206,18 @@ Sub LogArtifact(LoggingLevel As LoggingLevels, LogMessage As String)
     Artifact.Message = LogMessage
     Artifact.TimeStamp = Now()
     
-    LogArtifactObject Artifact
+    ChannelLogArtifactObject Artifact
 End Sub
-
 Sub LogArtifactObject(Artifact As cEvoArtifact)
+    pBatchedLogArtifacts(pNextBatchCnt).Charged = True
+    pBatchedLogArtifacts(pNextBatchCnt).LoggingLevel = Artifact.LoggingLevel
+    pBatchedLogArtifacts(pNextBatchCnt).Message = Artifact.Message
+    pBatchedLogArtifacts(pNextBatchCnt).TimeStamp = Artifact.TimeStamp
+    
+    ChannelLogArtifactObject pBatchedLogArtifacts(pNextBatchCnt)
+End Sub
+    
+Private Sub ChannelLogArtifactObject(Artifact As cEvoArtifact)
     Dim logConduit As ILogConduit
     
     If pBatchOutput Then

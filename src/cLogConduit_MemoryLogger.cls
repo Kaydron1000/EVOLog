@@ -94,10 +94,17 @@ End Property
 '
 '*******************************************************************************
 Property Let MemorySize(Size As Integer)
+    Dim prevMemSize As Integer
+    Dim indx As Integer
+    
     If pNextMemoryIndx > Size Then Err.Raise 447
     
+    prevMemSize = pMemorySize
     pMemorySize = Size
     ReDim Preserve pLogArtifactsArray(0 To MemorySize - 1)
+    For indx = prevMemSize To pMemorySize - 1
+        Set pLogArtifactsArray(indx) = New cEvoArtifact
+    Next
 End Property
 
 '*******************************************************************************
@@ -120,7 +127,8 @@ End Sub
 '*******************************************************************************
 ' Initializes properties of the conduit.
 '*******************************************************************************
-Sub Init(Optional ConduitLoggingLevel As LoggingLevels = Verbose, Optional InitialMemorySize As Integer = 100)
+Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose, Optional InitialMemorySize As Integer = 20)
+    pConduitName = ConduitName
     Me.ConduitLoggingLevel = ConduitLoggingLevel
     MemorySize = InitialMemorySize
     pNextMemoryIndx = 0
@@ -133,7 +141,10 @@ Private Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
     If LogArtifact.LoggingLevel >= Me.ConduitLoggingLevel Then
         If pNextMemoryIndx = pMemorySize Then MemorySize = MemorySize * 2
           
-        Set pLogArtifactsArray(pNextMemoryIndx) = LogArtifact
+        pLogArtifactsArray(pNextMemoryIndx).Charged = True
+        pLogArtifactsArray(pNextMemoryIndx).LoggingLevel = LogArtifact.LoggingLevel
+        pLogArtifactsArray(pNextMemoryIndx).Message = LogArtifact.Message
+        pLogArtifactsArray(pNextMemoryIndx).TimeStamp = LogArtifact.TimeStamp
         pNextMemoryIndx = pNextMemoryIndx + 1
     End If
 End Sub
@@ -150,8 +161,10 @@ Private Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
 End Sub
 
 Public Sub ReChannelLogArtifacts(EvoLogger As cEvoLogger)
+    Dim indx As Integer
+    
     For indx = LBound(pLogArtifactsArray) To pNextMemoryIndx - 1
-        EvoLogger.LogArtifactObject (pLogArtifactsArray(indx))
+        EvoLogger.LogArtifactObject pLogArtifactsArray(indx)
     Next
 End Sub
 

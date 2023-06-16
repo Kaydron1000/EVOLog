@@ -149,11 +149,15 @@ Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
     
     pConduitName = ConduitName
     Me.ConduitLoggingLevel = ConduitLoggingLevel
+    If Left(LogFolderPath, 2) = ".\" Then
+        folderPath = BuildPath(ThisWorkbook.Path, LogFolderPath, "\")
+    Else
+        folderPath = BuildPath(LogFolderPath, "\")
+    End If
     
-    folderPath = BuildPath(LogFolderPath, PATH_SEPARATOR)
     fileName = LogFileName
     ''Checking if LogFolderPath is a valid Folder
-    If Dir(BuildPath(folderPath, PATH_SEPARATOR), vbDirectory) <> "." Then Err.Raise 76
+    If Dir(folderPath, vbDirectory) <> "." Then Err.Raise 76
     
     fileName = FormatFilePath(fileName)
     
@@ -193,17 +197,32 @@ Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
     
     
 End Sub
-Private Function FormatFilePath(FilePath As String, Optional TimeStampFormatString As Variant = "yyyymmdd_hhmmss", _
+
+'*******************************************************************************
+' Formats the string. Replaces the variables.
+'*******************************************************************************
+Private Function FormatString(FilePath As String, Optional TimeStampFormatString As Variant = "yyyymmdd_hhmmss", _
                                Optional DateFormatString As Variant = "mm/dd/yy", Optional TimeFormatString As Variant = "hh:mm:ss") As String
     ''TODO: Fix milliseconds formatting
-    FormatFilePath = UCase(FilePath)
-    FormatFilePath = Replace(FormatFilePath, "#LOGGINGLEVEL#", pLoggingLevelNames(ConduitLoggingLevel))
-    FormatFilePath = Replace(FormatFilePath, "#DATE#", Format(Now, DateFormatString))
-    FormatFilePath = Replace(FormatFilePath, "#TIME#", Format(Now, TimeFormatString) & Right(Format(Timer, "0.000"), 4))
-    FormatFilePath = Replace(FormatFilePath, "#TIMESTAMP#", Format(Now, TimeStampFormatString) & Right(Format(Timer, "0.000"), 4))
-    FormatFilePath = Replace(FormatFilePath, "#CONDUITNAME#", Me.ConduitName)
+    FormatString = UCase(FilePath)
+    FormatString = Replace(FormatString, "#LOGGINGLEVEL#", pLoggingLevelNames(ConduitLoggingLevel))
+    FormatString = Replace(FormatString, "#DATE#", Format(Now, DateFormatString))
+    FormatString = Replace(FormatString, "#TIME#", Format(Now, TimeFormatString) & Right(Format(Timer, "0.000"), 4))
+    FormatString = Replace(FormatString, "#TIMESTAMP#", Format(Now, TimeStampFormatString) & Right(Format(Timer, "0.000"), 4))
+    FormatString = Replace(FormatString, "#CONDUITNAME#", Me.ConduitName)
     
 '    s = Format(Now, "yyyy-mm-dd hh:mm:ss") & Right(Format(Timer, "0.000"), 4)
+End Function
+
+'*******************************************************************************
+' Formats the filepath. Replaces the variables and adds file extension if needed.
+'*******************************************************************************
+Private Function FormatFilePath(FilePath As String, Optional TimeStampFormatString As Variant = "yyyymmdd_hhmmss", _
+                               Optional DateFormatString As Variant = "mm/dd/yy", Optional TimeFormatString As Variant = "hh:mm:ss") As String
+    FormatFilePath = FormatString(FilePath, TimeStampFormatString, DateFormatString, TimeFormatString)
+    If Right(FormatFilePath, Len(constConduitFileExtension) + 1) <> "." & constConduitFileExtension Then
+        FormatFilePath = FormatFilePath & "." & constConduitFileExtension
+    End If
 End Function
 
 '*******************************************************************************
