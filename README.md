@@ -13,3 +13,20 @@ EVOLogger's base class is the cEVOLogger. This class allows channeling log messa
 ## ILogConduit Interface:
 EVOLogger has the capablity to interface with any ILogConduit created. This conduit definition provides the neccessary properties and subroutines for cEVOLogger class to utilze a conduit. Conduits provide a way to channel a log message to its appropriate destination (i.e. Text File,Text Box).
 
+cEvoLogger
+-LoggerName
+-LoggingLevelNames
+-BatchOutput
+-BatchSetCount
+-----------------------------
+-CounditsCount
+-GetCouduitNames
+-AddConduit
+-GetConduit
+-RemoveConduit
+-ClearConduits
+-----------------------------
+-LogArtifact
+-LogArtifactObject
+-----------------------------
+-Init
