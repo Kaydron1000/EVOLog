@@ -120,9 +120,9 @@ End Property
 Private Sub InitConduit(ParentLogger As cEvoLogger)
     pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
 End Sub
-Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Information, Optional LogFileName As Variant = "#DATETIME#_#CONDUITNAME#", _
+Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Information, Optional LogFileName As Variant = "#DATE##TIME#_#CONDUITNAME#", _
          Optional LogFolderPath As Variant = ".\LogOutput", Optional FileAccess As FileAccesses = FileAccesses.Append, _
-         Optional WorksheetName As Variant = "#DATETIME#_#CONDUITNAME#", Optional Headers As Variant = Nothing)
+         Optional WorksheetName As Variant = "#DATE##TIME#_#CONDUITNAME#", Optional Headers As Variant = Nothing)
     
     Dim n As Integer
     Dim workbookOpen As Boolean
@@ -130,7 +130,7 @@ Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
     Dim baseShtName As String
     
     Dim fileExists As Boolean
-    Dim fileName As String
+    Dim FileName As String
     Dim folderPath As String
     
     pConduitName = ConduitName
@@ -141,15 +141,18 @@ Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
         folderPath = BuildPath(LogFolderPath, "\")
     End If
     
-    fileName = LogFileName
+    FileName = LogFileName
     ''Checking if LogFolderPath is a valid Folder
-    If Dir(folderPath, vbDirectory) <> "." Then Err.Raise 76
+    If Dir(folderPath, vbDirectory) <> "." Then ''Err.Raise 76
+        MkDir folderPath
+    End If
     
-    fileName = FormatFilePath(fileName)
     
-    fileExists = Len(Dir(BuildPath(folderPath, fileName))) > 0
+    FileName = FormatFilePath(FileName)
     
-    shtName = Left(FormatString(WorksheetName), 27)
+    fileExists = Len(Dir(BuildPath(folderPath, FileName))) > 0
+    
+    shtName = Left(FormatString(CStr(WorksheetName)), 27)
 
     ''Checking for workbook being opened
     If ContainsKey(Application.Workbooks, Me.LogFileName) Then
@@ -160,8 +163,8 @@ Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
 
     If fileExists And FileAccess = FileAccesses.Append Then
         pLogFolderPath = folderPath
-        pLogFileName = fileName
-        pLogFilePath = BuildPath(folderPath, fileName)
+        pLogFileName = FileName
+        pLogFilePath = BuildPath(folderPath, FileName)
         
         
         ''If workbook is open set logging workbook to open the workbook, else open the workbook
@@ -169,13 +172,13 @@ Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
         If workbookOpen Then
             Set pLoggingWB = Application.Workbooks(Me.LogFileName)
         Else
-            Set pLoggingWB = Application.Workbooks.Open(fileName:=Me.LogFilePath, UpdateLinks:=False, ReadOnly:=False, IgnoreReadOnlyRecommended:=True, Notify:=False)
+            Set pLoggingWB = Application.Workbooks.Open(FileName:=Me.LogFilePath, UpdateLinks:=False, ReadOnly:=False, IgnoreReadOnlyRecommended:=True, Notify:=False)
         End If
         Application.DisplayAlerts = True
     ElseIf fileExists And FileAccess = FileAccesses.Overwrite Then
         pLogFolderPath = folderPath
-        pLogFileName = fileName
-        pLogFilePath = BuildPath(folderPath, fileName)
+        pLogFileName = FileName
+        pLogFilePath = BuildPath(folderPath, FileName)
         
         ''Overwriting workbook
         Application.DisplayAlerts = False
@@ -183,31 +186,31 @@ Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
             Application.Workbooks(Me.LogFileName).Close SaveChanges:=False
         Else
             Set pLoggingWB = Application.Workbooks.Add
-            pLoggingWB.SaveAs fileName:=Me.LogFilePath, FileFormat:=X1FileFormat.xlWorkbookDefault, _
-            AccessMode:=X1SaveAsAccessMode.x1NoChange, ConflictResolution:=X1SaveConflictResolution.xlLocalSessionChanges
+            pLoggingWB.SaveAs FileName:=Me.LogFilePath, FileFormat:=XlFileFormat.xlWorkbookDefault, _
+            AccessMode:=XlSaveAsAccessMode.xlNoChange, ConflictResolution:=XlSaveConflictResolution.xlLocalSessionChanges
         End If
         Application.DisplayAlerts = True
     ElseIf fileExists And FileAccess = FileAccesses.CreateNew Then
-        fileName = GetUniqueLogFileName(folderPath, fileName)
+        FileName = GetUniqueLogFileName(folderPath, FileName)
         pLogFolderPath = folderPath
-        pLogFileName = fileName
-        pLogFilePath = BuildPath(folderPath, fileName)
+        pLogFileName = FileName
+        pLogFilePath = BuildPath(folderPath, FileName)
         
         ''Creating new workbook
         Application.DisplayRlerts = False
         Set pLoggingWB = Application.Workbooks.Add
-        pLoggingWB.SaveAs fileName:=Me.LogFilePath, FileFormat:=XlFileFormat.xlWorkbookDefault, _
-        AccessMode:=X1SaveAsAccessMode.x1NoChange, ConflictResolution:=XlSaveConflictResolution.xlLocalSessionChanges
+        pLoggingWB.SaveAs FileName:=Me.LogFilePath, FileFormat:=XlFileFormat.xlWorkbookDefault, _
+        AccessMode:=XlSaveAsAccessMode.xlNoChange, ConflictResolution:=XlSaveConflictResolution.xlLocalSessionChanges
         Application.DisplayRlerts = True
     ElseIf Not fileExists Then
         pLogFolderPath = folderPath
-        pLogFileName = fileName
-        pLogFilePath = BuildPath(folderPath, fileName)
+        pLogFileName = FileName
+        pLogFilePath = BuildPath(folderPath, FileName)
         
-        Application.DisplayRlerts = False
+        Application.DisplayAlerts = False
         Set pLoggingWB = Application.Workbooks.Add
-        pLoggingWB.SaveAs fileName:=Me.LogFilePath, FileFormat:=XlFileFormat.xlWorkbookDefault, _
-        AccessMode:=X1SaveAsAccessMode.x1NoChange, ConflictResolution:=XlSaveConflictResolution.xlLocalSessionChanges
+        pLoggingWB.SaveAs FileName:=Me.LogFilePath, FileFormat:=XlFileFormat.xlWorkbookDefault, _
+        AccessMode:=XlSaveAsAccessMode.xlNoChange, ConflictResolution:=XlSaveConflictResolution.xlLocalSessionChanges
         Application.DisplayRlerts = True
     End If
     
@@ -228,8 +231,10 @@ End Sub
 ' Formats the string. Replaces the variables.
 '*******************************************************************************
 Private Function FormatString(FilePath As String, Optional TimeStampFormatString As Variant = "yyyymmdd_hhmmss", _
-                               Optional DateFormatString As Variant = "mm/dd/yy", Optional TimeFormatString As Variant = "hh:mm:ss") As String
+                               Optional DateFormatString As Variant = "mm/dd/yy", Optional TimeFormatString As Variant = "hh:nn:ss") As String
     ''TODO: Fix milliseconds formatting
+    Dim a, b, c, d
+    tsts
     FormatString = UCase(FilePath)
     FormatString = Replace(FormatString, "#LOGGINGLEVEL#", pLoggingLevelNames(ConduitLoggingLevel))
     FormatString = Replace(FormatString, "#DATE#", Format(Now, DateFormatString))
@@ -239,12 +244,108 @@ Private Function FormatString(FilePath As String, Optional TimeStampFormatString
     
 '    s = Format(Now, "yyyy-mm-dd hh:mm:ss") & Right(Format(Timer, "0.000"), 4)
 End Function
+Private Function tsts()
+    Dim a, b, c, d, e, f, g, h, i
+    Dim ab, bb, cb, db, eb, fb, gb, hb, ib
+    Dim r, s, t, u, v, w, x, y, z
+    Dim rb, sb, tb, ub, vb, wb, xb, yb, zb
+    
+    a = FormatTime(#2:22:55 PM#, "hh;nn;ss.lll", "34.555")
+    b = FormatTime(#2:22:55 PM#, "hh;nn;ss.ll", "34.666")
+    c = FormatTime(#2:22:55 PM#, "hh;nn;ss.l", "34.777")
+    
+    e = FormatTime(#2:22:55 PM#, "hh;nn;ss.lll", CSng("34.777"))
+    f = FormatTime(#2:22:55 PM#, "hh;nn;ss.ll", CSng("34.888"))
+    g = FormatTime(#2:22:55 PM#, "hh;nn;ss.l", CSng("34.999"))
+    ab = "14;22;55.555" = a
+    bb = "14;22;55.66" = b
+    cb = "14;22;55.7" = c
+    
+    eb = "14;22;55.777" = e
+    fb = "14;22;55.88" = f
+    gb = "14;22;55.9" = g
+    
+    r = FormatTime(#2:22:55 PM#, "hh;nn;ss.lll", "34.5")
+    s = FormatTime(#2:22:55 PM#, "hh;nn;ss.lll", "34.66")
+    t = FormatTime(#2:22:55 PM#, "hh;nn;ss.lll", "777")
+    u = FormatTime(#2:22:55 PM#, "hh;nn;ss.ll", "888")
+    z = FormatTime(#2:22:55 PM#, "hh;nn;ss.lll", "9")
+    
+    v = FormatTime(#2:22:55 PM#, "hh;nn;ss.lll", CSng("34.7"))
+    w = FormatTime(#2:22:55 PM#, "hh;nn;ss.lll", CSng("34.88"))
+    x = FormatTime(#2:22:55 PM#, "hh;nn;ss.lll", CSng("34"))
+    y = FormatTime(#2:22:55 PM#, "hh;nn;ss.l", CSng(".00"))
+    
+    
+    d = FormatTime(#2:22:55 PM#, "hh;nn;ss.lll", "900")
+    a = FormatTime(#2:22:55 PM#, "hh;nn;ss.lll", "aaa")
+    rb = "14;22;55.500" = r
+    sb = "14;22;55.660" = s
+    tb = "14;22;55.777" = t
+    ub = "14;22;55.88" = u
+    
+    vb = "14;22;55.700" = v
+    wb = "14;22;55.880" = w
+    xb = "14;22;55.000" = x
+    yb = "14;22;55.0" = y
+    zb = "14;22;55.009" = z
+    db = "14;22;55.900" = d
+End Function
+Private Function FormatTime(InputTime As Date, Optional TimeFormatString As String = "hh:nn:ss", Optional Milliseconds As Variant) As String
+    Dim initialTimeStrg As String
+    Dim retTimeStrg As String
+    Dim hrStrg As String
+    Dim minStrg As String
+    Dim secStrg As String
+    Dim milliStrg As String
+    Dim bb
+    
+    If Not IsMissing(Milliseconds) Then
+         If TypeName(Milliseconds) = "Single" Then
+            milliStrg = Right(Format(Milliseconds, "0.000"), 3)
+         ElseIf TypeName(Milliseconds) = "String" Then
+            If IsNumeric(Milliseconds) Then
+                If InStr(Milliseconds, ".") > 0 Then
+                    milliStrg = Mid(Milliseconds & "000", InStr(Milliseconds, ".") + 1, 3)
+                Else
+                    milliStrg = Format(Left(Milliseconds, 3), "000")
+                End If
+            Else
+                bb = Application.VBE.ActiveCodePane.CodeModule.Parent.Name & "." & Application.VBE.ActiveCodePane.CodeModule.ProcOfLine(Application.VBE.ActiveCodePane.TopLine, 0)
+                Call Err.Raise(-44, bb, "Invalid value sent for Milliseconds parameter")
+            End If
+        Else
+               bb = Application.VBE.ActiveCodePane.CodeModule.Parent.Name & "." & Application.VBE.ActiveCodePane.CodeModule.ProcOfLine(Application.VBE.ActiveCodePane.TopLine, 0)
+               Call Err.Raise(-44, bb, "Invalid value sent for Milliseconds parameter")
+        End If
+    End If
+    Dim a As Single
+
+    initialTimeStrg = Format(InputTime, "hh:mm:ss")
+
+    hrStrg = Mid(initialTimeStrg, 1, 2)
+    minStrg = Mid(initialTimeStrg, 4, 2)
+    secStrg = Mid(initialTimeStrg, 7, 2)
+
+    retTimeStrg = TimeFormatString
+    retTimeStrg = Replace(retTimeStrg, "hh", Format(CInt(hrStrg), "00"))
+    retTimeStrg = Replace(retTimeStrg, "h", Format(CInt(hrStrg), "0"))
+    retTimeStrg = Replace(retTimeStrg, "nn", Format(CInt(minStrg), "00"))
+    retTimeStrg = Replace(retTimeStrg, "n", Format(CInt(minStrg), "0"))
+    retTimeStrg = Replace(retTimeStrg, "ss", Format(CInt(secStrg), "00"))
+    retTimeStrg = Replace(retTimeStrg, "s", Format(CInt(secStrg), "0"))
+    retTimeStrg = Replace(retTimeStrg, "lll", Left(milliStrg, 3))
+    retTimeStrg = Replace(retTimeStrg, "ll", Left(milliStrg, 2))
+    retTimeStrg = Replace(retTimeStrg, "l", Left(milliStrg, 1))
+    
+    FormatTime = retTimeStrg
+End Function
 
 '*******************************************************************************
 ' Formats the filepath. Replaces the variables and adds file extension if needed.
 '*******************************************************************************
 Private Function FormatFilePath(FilePath As String, Optional TimeStampFormatString As Variant = "yyyymmdd_hhmmss", _
-                               Optional DateFormatString As Variant = "mm/dd/yy", Optional TimeFormatString As Variant = "hh:mm:ss") As String
+                               Optional DateFormatString As Variant = "yymmdd", Optional TimeFormatString As Variant = "hh;nn;ss") As String
     FormatFilePath = FormatString(FilePath, TimeStampFormatString, DateFormatString, TimeFormatString)
     If Right(FormatFilePath, Len(constConduitFileExtension) + 1) <> "." & constConduitFileExtension Then
         FormatFilePath = FormatFilePath & "." & constConduitFileExtension
@@ -308,7 +409,7 @@ Private Sub ChannelLogArtifacts(LogMessageLevels() As LoggingLevels, Messages() 
 End Sub
 
 Private Function TransposeArray(MyArray As Variant) As Variant
-    Dim X As Long, Y As Long
+    Dim x As Long, y As Long
     Dim maxX As Long, minX As Long
     Dim maxY As Long, minY As Long
     Dim tempArr As Variant
@@ -323,11 +424,11 @@ Private Function TransposeArray(MyArray As Variant) As Variant
     ReDim tempArr(minY To max¥, minX To maxX)
     
     'Transpose the Array
-    For X = minX To maxX
-        For Y = minY To max¥
-            tempArr(Y, X) = MyArray(X, Y)
-        Next Y
-    Next X
+    For x = minX To maxX
+        For y = minY To max¥
+            tempArr(y, x) = MyArray(x, y)
+        Next y
+    Next x
 
     'Output Array
     TransposeArray = tempArr
@@ -335,7 +436,7 @@ End Function
 Private Function GetUniqueLogFileName(LogFolderPath As String, LogFileName As String) As String
     Dim n As Integer
     Dim folderPath As String
-    Dim fileName As String
+    Dim FileName As String
     Dim extStart As Integer
     Dim baseName As String
     Dim extName As String
@@ -343,17 +444,17 @@ Private Function GetUniqueLogFileName(LogFolderPath As String, LogFileName As St
     
     folderPath = LogFolderPath
     
-    fileName = LogFileName
+    FileName = LogFileName
     
     On Error GoTo errMark
         If Dir(BuildPath(folderPath, "\"), vbDirectory) <> "." Then Err.Raise 76
         
-        extStart = InStrRev(fileName, ".")
-        If extStart = O Then fileName = fileName & "." & SinkFileExtension
+        extStart = InStrRev(FileName, ".")
+        If extStart = O Then FileName = FileName & "." & SinkFileExtension
         
-        extStart = InStrRev(fileName, ".")
-        baseName = Left(fileName, extStart - 1)
-        extName = Right(fileName, Len(fileName) - extStart)
+        extStart = InStrRev(FileName, ".")
+        baseName = Left(FileName, extStart - 1)
+        extName = Right(FileName, Len(FileName) - extStart)
         
         tempLogFileName = baseName & "." & extName
         
@@ -363,7 +464,7 @@ Private Function GetUniqueLogFileName(LogFolderPath As String, LogFileName As St
             n = n + 1
         Loop
         If n >= 999 Then
-            Err.Raise 999, "New File Name", "Cannot create log file. Over 1000 instances exist of " & fileName & "™ exists in " & LogFolderPath & "."
+            Err.Raise 999, "New File Name", "Cannot create log file. Over 1000 instances exist of " & FileName & "™ exists in " & LogFolderPath & "."
         End If
 errMark:
         If Err.Number <> O Then
@@ -383,6 +484,40 @@ Private Function FolderFromPath(strFullPath As String) As String
     FolderFromPath = Left(strFullPath, InStrRev(strFullPath, "\"))
 End Function
 
+Private Function ContainsKey(coll As Variant, key As String)
+    Dim errNum1 As Integer
+    Dim errNum2 As Integer
+    Dim retItm As Variant
+    
+    On Error Resume Next
+    Set retItm = coll(key)
+    errNum1 = Err.Number
+    On Error GoTo 0
+    
+    On Error Resume Next
+    retItm = coll(key)
+    errNum2 = Err.Number
+    On Error GoTo 0
+    
+    If errNum1 = 0 Or errNum2 = 0 Then
+        ContainsKey = True
+    Else
+        ContainsKey = False
+    End If
+End Function
+
+Private Function SanatizeFileName(FileName As String)
+    Dim illegalCharArray() As String
+    Dim replaceChar() As String
+    Dim n As Integer
+    illegalCharArray = Array("\", "/", "<", ">", ":", """", "|", "?", "*")
+    replaceChar = Array("_", "_", "-", "-", ";", "_", "-", "-")
+    
+    SanatizeFileName = FileName
+    For n = LBound(illegalCharArray) To UBound(illegalCharArray)
+        SanatizeFileName = Replace(SanatizeFileName, illegalCharArray(n), replaceChar(n))
+    Next
+End Function
 '*******************************************************************************
 ' Class initialize method
 '*******************************************************************************
@@ -390,13 +525,13 @@ Private Sub Class_Initialize()
     pMessageTemplate = "[#LOGGINGLEVEL#]" & vbTab & "[#DATE# #TIME#]: " & vbTab & "#MESSAGE#"
     ReDim pDefaultHeaders(0 To 2)
     pDefaultHeaders(0) = "Log Level"
-    pDefaultHeaders(l) = "Time Stamp"
+    pDefaultHeaders(1) = "Time Stamp"
     pDefaultHeaders(2) = "Log Message"
     
     Set pParentLoggers = New cEvoLoggers
     
     Set pLoggingLevelNames = New Collection
-    pDefaultLoggingLevel = Information
+    ''pDefaultLoggingLevel = Information
     pLoggingLevelNames.Add "Verbose", "Verbose"
     pLoggingLevelNames.Add "Debugg", "Debugg"
     pLoggingLevelNames.Add "Information", "Information"

@@ -1128,7 +1128,7 @@ Private Sub AddFilesTo(ByVal collTarget As Collection _
         Const maxDirLen As Long = 247
     #End If
     Const errBadFileNameOrNumber As Long = 52
-    Dim fileName As String
+    Dim FileName As String
     Dim fullPath As String
     Dim collTemp As New Collection
     Dim dirFailed As Boolean
@@ -1136,18 +1136,18 @@ Private Sub AddFilesTo(ByVal collTarget As Collection _
     Dim fixedPath As String: fixedPath = BuildPath(folderPath, vbNullString)
     '
     On Error Resume Next
-    fileName = Dir(fixedPath, fAttribute)
+    FileName = Dir(fixedPath, fAttribute)
     dirFailed = (Err.Number = errBadFileNameOrNumber) 'Unsupported Unicode
     On Error GoTo 0
     '
-    Do While LenB(fileName) > 0
-        collTemp.Add fileName
-        If InStr(1, fileName, "?") > 0 Then 'Unsupported Unicode
+    Do While LenB(FileName) > 0
+        collTemp.Add FileName
+        If InStr(1, FileName, "?") > 0 Then 'Unsupported Unicode
             Set collTemp = New Collection
             dirFailed = True
             Exit Do
         End If
-        fileName = Dir
+        FileName = Dir
     Loop
     If dirFailed Or Len(fixedPath) > maxDirLen Then
         #If Mac Then
@@ -1798,7 +1798,7 @@ Private Sub ReadODProviders()
     '
     #If Mac Then 'Grant access to all needed files/folders, in batch
         Dim collFiles As New Collection
-        Dim fileName As String
+        Dim FileName As String
         '
         For i = 1 To accountsInfo.pCount
             With accountsInfo.arr(i)
@@ -1808,10 +1808,10 @@ Private Sub ReadODProviders()
                 If .isPersonal Then
                     collFiles.Add .groupPath
                 Else
-                    fileName = Dir(Replace(.clientPath, ".ini", "_*.ini"))
-                    Do While LenB(fileName) > 0
-                        collFiles.Add .folderPath & "/" & fileName
-                        fileName = Dir
+                    FileName = Dir(Replace(.clientPath, ".ini", "_*.ini"))
+                    Do While LenB(FileName) > 0
+                        collFiles.Add .folderPath & "/" & FileName
+                        FileName = Dir
                     Loop
                 End If
             End With
@@ -1838,12 +1838,12 @@ Private Sub ReadODProviders()
             If LenB(syncID) > 0 Then
                 collSyncIDToDir.Add odCloudDir, syncID
             Else
-                fileName = Dir(odCloudDir & "/", vbDirectory)
-                Do While LenB(fileName) > 0
-                    folderPath = odCloudDir & "/" & fileName
+                FileName = Dir(odCloudDir & "/", vbDirectory)
+                Do While LenB(FileName) > 0
+                    folderPath = odCloudDir & "/" & FileName
                     collFiles.Add folderPath
                     collFiles.Add folderPath & "/" & syncIDFileName
-                    fileName = Dir
+                    FileName = Dir
                 Loop
             End If
         Next odCloudDir

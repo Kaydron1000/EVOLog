@@ -198,15 +198,12 @@ End Sub
 ''Log a message to all attached conduits.
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Sub LogArtifact(LoggingLevel As LoggingLevels, LogMessage As String)
-    Dim Artifact As cEvoArtifact
+    pBatchedLogArtifacts(pNextBatchCnt).Charged = True
+    pBatchedLogArtifacts(pNextBatchCnt).LoggingLevel = LoggingLevel
+    pBatchedLogArtifacts(pNextBatchCnt).Message = LogMessage
+    pBatchedLogArtifacts(pNextBatchCnt).TimeStamp = Now()
     
-    Set Artifact = pBatchedLogArtifacts(pNextBatchCnt)
-    Artifact.Charged = True
-    Artifact.LoggingLevel = LoggingLevel
-    Artifact.Message = LogMessage
-    Artifact.TimeStamp = Now()
-    
-    ChannelLogArtifactObject Artifact
+    ChannelLogArtifactObject pBatchedLogArtifacts(pNextBatchCnt)
 End Sub
 Sub LogArtifactObject(Artifact As cEvoArtifact)
     pBatchedLogArtifacts(pNextBatchCnt).Charged = True

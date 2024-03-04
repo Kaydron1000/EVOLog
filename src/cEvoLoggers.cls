@@ -49,10 +49,10 @@ Public Sub Class_Terminate()
     Set myCustomCollection = Nothing
 End Sub
 
-Public Sub Add(ByVal Item As Object, Optional Key As Variant, _
+Public Sub Add(ByVal Item As Object, Optional key As Variant, _
                Optional Before As Variant, Optional After As Variant)
-    myCustomCollection.Add Item:=Item, Key:=Key, Before:=Before, After:=After
-    myCustomCollectionKeys.Add Item:=Key, Key:=Key
+    myCustomCollection.Add Item:=Item, key:=key, Before:=Before, After:=After
+    myCustomCollectionKeys.Add Item:=key, key:=key
 End Sub
 
 Public Sub AddItems(ParamArray arr() As Variant)

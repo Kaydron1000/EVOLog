@@ -144,7 +144,7 @@ Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
          Optional LogFolderPath As String = ".\LogOutput", Optional FileAccess As FileAccesses = FileAccesses.Append)
     
     Dim fileExists As Boolean
-    Dim fileName As String
+    Dim FileName As String
     Dim folderPath As String
     
     pConduitName = ConduitName
@@ -155,33 +155,35 @@ Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
         folderPath = BuildPath(LogFolderPath, "\")
     End If
     
-    fileName = LogFileName
+    FileName = LogFileName
     ''Checking if LogFolderPath is a valid Folder
-    If Dir(folderPath, vbDirectory) <> "." Then Err.Raise 76
+    If Dir(folderPath, vbDirectory) <> "." Then
+        MkDir folderPath
+    End If
     
-    fileName = FormatFilePath(fileName)
+    FileName = FormatFilePath(FileName)
     
-    fileExists = Len(Dir(BuildPath(folderPath, fileName))) > 0
+    fileExists = Len(Dir(BuildPath(folderPath, FileName))) > 0
     
     If fileExists And FileAccess = FileAccesses.Append Then
         pLogFolderPath = folderPath
-        pLogFileName = fileName
-        pLogFilePath = BuildPath(folderPath, fileName)
+        pLogFileName = FileName
+        pLogFilePath = BuildPath(folderPath, FileName)
     ElseIf fileExists And FileAccess = FileAccesses.Overwrite Then
         pLogFolderPath = folderPath
-        pLogFileName = fileName
-        pLogFilePath = BuildPath(folderPath, fileName)
+        pLogFileName = FileName
+        pLogFilePath = BuildPath(folderPath, FileName)
     ElseIf fileExists And FileAccess = FileAccesses.CreateNew Then
-        fileName = GetUniqueLogFileName(folderPath, fileName)
+        FileName = GetUniqueLogFileName(folderPath, FileName)
         
         pLogFolderPath = folderPath
-        pLogFileName = fileName
-        pLogFilePath = BuildPath(folderPath, fileName)
+        pLogFileName = FileName
+        pLogFilePath = BuildPath(folderPath, FileName)
     ElseIf Not fileExists Then
-        fileName = GetUniqueLogFileName(folderPath, fileName)
+        FileName = GetUniqueLogFileName(folderPath, FileName)
         pLogFolderPath = folderPath
-        pLogFileName = fileName
-        pLogFilePath = BuildPath(folderPath, fileName)
+        pLogFileName = FileName
+        pLogFilePath = BuildPath(folderPath, FileName)
     End If
     
     pFileNum = FreeFile
@@ -299,25 +301,25 @@ End Function
 Private Function GetUniqueLogFileName(LogFolderPath As String, LogFileName As String) As String
     Dim n As Integer
     Dim folderPath As String
-    Dim fileName As String
+    Dim FileName As String
     Dim extStart As Integer
     Dim baseName As String
     Dim extName As String
     Dim tempLogFileName As String
     
     folderPath = LogFolderPath
-    fileName = LogFileName
+    FileName = LogFileName
     
     On Error GoTo errMark
         If Dir(BuildPath(folderPath, "\"), vbDirectory) <> "." Then Err.Raise 76
         
-        If Right(fileName, Len(constConduitFileExtension) + 1) <> "." & constConduitFileExtension Then
-            fileName = fileName & "." & constConduitFileExtension
+        If Right(FileName, Len(constConduitFileExtension) + 1) <> "." & constConduitFileExtension Then
+            FileName = FileName & "." & constConduitFileExtension
         End If
         
-        extStart = InStrRev(fileName, ".")
-        baseName = Left(fileName, extStart - 1)
-        extName = Right(fileName, Len(fileName) - extStart)
+        extStart = InStrRev(FileName, ".")
+        baseName = Left(FileName, extStart - 1)
+        extName = Right(FileName, Len(FileName) - extStart)
         
         tempLogFileName = baseName & "." & extName
     
@@ -328,7 +330,7 @@ Private Function GetUniqueLogFileName(LogFolderPath As String, LogFileName As St
         Loop
         
         If n >= 999 Then
-            Err.Raise 999, "New File Name", "Cannot create log file. Over 1000 instances exist of " & fileName & " exists in " & LogFolderPath & "."
+            Err.Raise 999, "New File Name", "Cannot create log file. Over 1000 instances exist of " & FileName & " exists in " & LogFolderPath & "."
         End If
 errMark:
         If Err.Number <> 0 Then
@@ -342,6 +344,18 @@ errMark:
     On Error GoTo 0
 End Function
 
+Private Function SanatizeFileName(FileName As String)
+    Dim illegalCharArray() As String
+    Dim replaceChar() As String
+    Dim n As Integer
+    illegalCharArray = Array("\", "/", "<", ">", ":", """", "|", "?", "*")
+    replaceChar = Array("_", "_", "-", "-", ";", "_", "-", "-")
+    
+    SanatizeFileName = FileName
+    For n = LBound(illegalCharArray) To UBound(illegalCharArray)
+        SanatizeFileName = Replace(SanatizeFileName, illegalCharArray(n), replaceChar(n))
+    Next
+End Function
 '*******************************************************************************
 ' Class initialize method
 '*******************************************************************************

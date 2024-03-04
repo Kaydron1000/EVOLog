@@ -94,6 +94,8 @@ Sub UnitTest_cLogConduit_Immediate_Init()
     Set logger = New cEvoLogger
     Set logCond = New cLogConduit_Immediate
     
+    
+    
     logCond.Init Verbose
     logger.Init "Logger"
     logger.BatchSetCount = 3
