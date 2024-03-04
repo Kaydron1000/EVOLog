@@ -1,0 +1,12 @@
+[Error] [03/01/24 19:11:18.920]: This is an error
+[Debugg] [03/01/24 19:11:18.920]: This is debug
+[Verbose] [03/01/24 19:11:18.920]: This is Verbose
+[Information] [03/01/24 19:11:19.000]: This is info1
+[Information] [03/01/24 19:11:19.000]: This is info2
+[Verbose] [03/01/24 19:11:20.000]: This is Verbose1
+[Debugg] [03/01/24 19:11:20.000]: This is debug1
+[Error] [03/01/24 19:11:20.000]: This is an error1
+[Error] [03/01/24 19:11:20.000]: This is an error t1
+[Error] [03/01/24 19:11:20.000]: This is an error t2
+[Error] [03/01/24 19:11:20.000]: This is an error t3
+[Error] [03/01/24 19:11:20.000]: This is an INFO 1
