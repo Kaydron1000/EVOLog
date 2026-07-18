@@ -18,12 +18,12 @@ EVOLog was built to make logging in VBA less repetitive and more flexible.
 
 The repository contains the library in two forms:
 
-- Exported VBA source files in `/home/runner/work/EVOLog/EVOLog/src`
-- An Excel workbook version in `/home/runner/work/EVOLog/EVOLog/EVOLog.xlsm`
+- Exported VBA source files in `src/`
+- An Excel workbook version in `EVOLog.xlsm`
 
 To adopt EVOLog in your own Office/VBA project:
 
-1. Import the classes and modules you need from `/home/runner/work/EVOLog/EVOLog/src` into your VBA project.
+1. Import the classes and modules you need from `src/` into your VBA project.
 2. Create a `cEvoLogger`.
 3. Initialize one or more conduits.
 4. Attach those conduits to the logger.
@@ -122,9 +122,9 @@ EVOLog currently supports:
 
 ## Repository Layout
 
-- `/home/runner/work/EVOLog/EVOLog/src` - exported VBA source files
-- `/home/runner/work/EVOLog/EVOLog/EVOLog.xlsm` - workbook version of the library
-- `/home/runner/work/EVOLog/EVOLog/src/UnitTests.bas` - sample/manual test routines
+- `src/` - exported VBA source files
+- `EVOLog.xlsm` - workbook version of the library
+- `src/UnitTests.bas` - sample/manual test routines
 
 ## Intended Audience
 
@@ -140,4 +140,4 @@ This repository is preserved as stable reference code rather than an actively ev
 
 ## License
 
-This project is licensed under the GNU General Public License v2.0. See `/home/runner/work/EVOLog/EVOLog/LICENSE`.
+This project is licensed under the GNU General Public License v2.0. See `LICENSE`.
