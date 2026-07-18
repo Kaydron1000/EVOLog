@@ -55,10 +55,10 @@ By default, the logger starts with batching enabled and a batch size of 20.
 
 ### Logging Levels
 
-EVOLog defines these levels:
+EVOLog defines these levels. The names below match the `LoggingLevels` enum in the codebase exactly, including `Debugg`.
 
 1. `Verbose`
-2. `Debugg` (the library's enum name)
+2. `Debugg`
 3. `Information`
 4. `Warning`
 5. `Error`
@@ -102,7 +102,7 @@ Set logger = New cEvoLogger
 Set immediateConduit = New cLogConduit_Immediate
 
 logger.Init "MyLogger"
-immediateConduit.Init "Immediate", Information
+immediateConduit.Init "Immediate", Information ' `Information` is a `LoggingLevels` enum value
 
 logger.AddConduit immediateConduit
 logger.LogArtifact Information, "Application started for {{0}}", Environ$("Username")
