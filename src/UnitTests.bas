@@ -1,5 +1,31 @@
 Attribute VB_Name = "UnitTests"
 Option Explicit
+Sub UnitTest_cLogConduit_Immediate()
+    Dim logger As cEvoLogger
+    Dim cnt As Integer
+    Dim strg As String
+    Dim errNum As Integer
+    Dim coll As Collection
+    Dim ConduitObj As cLogConduit_Immediate
+    
+    Set logger = New cEvoLogger
+    
+    Set ConduitObj = New cLogConduit_Immediate
+    
+    Call ConduitObj.Init("Imm", Information)
+    logger.Init "MyName"
+    
+    logger.AddConduit ConduitObj
+    
+    Call logger.LogArtifact(Fatal, "Message_{{0}} Fatal", 1)
+    Call logger.LogArtifact(Error, "Message_{{0}} Error", 2)
+    Call logger.LogArtifact(Warning, "Message_{{0}} Warning", 3)
+    Call logger.LogArtifact(Information, "Message_{{0}} Information", 4)
+    Call logger.LogArtifact(Debugg, "Message_{{0}} debugg", 5)
+    Call logger.LogArtifact(Verbose, "Message_{{0}} verbose", 6)
+    
+    logger.FlushBatchedLogArtifacts
+End Sub
 Sub UnitTest_cEvoLogger_Init()
     Dim logger As cEvoLogger
     Dim cnt As Integer

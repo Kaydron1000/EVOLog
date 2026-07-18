@@ -36,30 +36,36 @@ Attribute VB_Name = "LibFileTools"
 '' No extra library references are needed (e.g. Microsoft Scripting Runtime)
 ''
 '' Public/Exposed methods:
-''    - BrowseForFiles      (Windows only)
-''    - BrowseForFolder     (Windows only)
+''    - BrowseForFiles           (Windows only)
+''    - BrowseForFolder          (Windows only)
 ''    - BuildPath
 ''    - ConvertText
 ''    - CopyFile
 ''    - CopyFolder
 ''    - CreateFolder
+''    - DecodeURL
 ''    - DeleteFile
 ''    - DeleteFolder
 ''    - FixFileName
 ''    - FixPathSeparators
-''    - GetFileOwner        (Windows only)
+''    - GetFileOwner             (Windows only)
 ''    - GetFiles
 ''    - GetFolders
-''    - GetKnownFolderWin   (Windows only)
+''    - GetKnownFolderCLSID      (Windows only)
+''    - GetKnownFolderPath       (Windows only)
 ''    - GetLocalPath
+''    - GetMainBusinessURLs
 ''    - GetRelativePath
 ''    - GetRemotePath
-''    - GetSpecialFolderMac (Mac only)
+''    - GetSpecialFolderConstant (Mac only)
+''    - GetSpecialFolderDomain   (Mac only)
+''    - GetSpecialFolderPath     (Mac only)
 ''    - IsFile
 ''    - IsFolder
 ''    - IsFolderEditable
 ''    - MoveFile
 ''    - MoveFolder
+''    - ParentFolder
 ''    - ReadBytes
 '*******************************************************************************
 
@@ -80,6 +86,8 @@ Option Private Module
     #End If
 #Else
     #If VBA7 Then
+        Private Declare PtrSafe Function CommDlgExtendedError Lib "comdlg32.dll" () As Long
+        Private Declare PtrSafe Function GetOpenFileNameW Lib "comdlg32.dll" (pOpenfilename As OPENFILENAME) As Long
         Private Declare PtrSafe Function CopyFileW Lib "kernel32" (ByVal lpExistingFileName As LongPtr, ByVal lpNewFileName As LongPtr, ByVal bFailIfExists As Long) As Long
         Private Declare PtrSafe Function DeleteFileW Lib "kernel32" (ByVal lpFileName As LongPtr) As Long
         Private Declare PtrSafe Function RemoveDirectoryW Lib "kernel32" (ByVal lpPathName As LongPtr) As Long
@@ -88,12 +96,14 @@ Option Private Module
         Private Declare PtrSafe Function LookupAccountSid Lib "advapi32.dll" Alias "LookupAccountSidA" (ByVal lpSystemName As String, ByVal Sid As LongPtr, ByVal Name As String, cbName As Long, ByVal ReferencedDomainName As String, cbReferencedDomainName As Long, peUse As LongPtr) As Long
         Private Declare PtrSafe Function MultiByteToWideChar Lib "kernel32" (ByVal codePage As Long, ByVal dwFlags As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long) As Long
         Private Declare PtrSafe Function WideCharToMultiByte Lib "kernel32" (ByVal codePage As Long, ByVal dwFlags As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpDefaultChar As LongPtr, ByVal lpUsedDefaultChar As LongPtr) As Long
-        Private Declare PtrSafe Function SHGetKnownFolderPath Lib "Shell32" (ByRef rfID As GUID, ByVal dwFlags As Long, ByVal hToken As Long, ByRef pszPath As LongPtr) As Long
+        Private Declare PtrSafe Function SHGetKnownFolderPath Lib "shell32" (ByRef rfID As GUID, ByVal dwFlags As Long, ByVal hToken As Long, ByRef pszPath As LongPtr) As Long
         Private Declare PtrSafe Function CLSIDFromString Lib "ole32" (ByVal lpszGuid As LongPtr, ByRef pGuid As GUID) As Long
         Private Declare PtrSafe Function lstrlenW Lib "kernel32" (ByVal lpString As LongPtr) As Long
         Private Declare PtrSafe Sub CoTaskMemFree Lib "ole32" (ByVal hMem As LongPtr)
         Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
     #Else
+        Private Declare Function CommDlgExtendedError Lib "comdlg32.dll" () As Long
+        Private Declare Function GetOpenFileNameW Lib "comdlg32.dll" (pOpenfilename As OPENFILENAME) As Long
         Private Declare Function CopyFileW Lib "kernel32" (ByVal lpExistingFileName As Long, ByVal lpNewFileName As Long, ByVal bFailIfExists As Long) As Long
         Private Declare Function DeleteFileW Lib "kernel32" (ByVal lpFileName As Long) As Long
         Private Declare Function RemoveDirectoryW Lib "kernel32" (ByVal lpPathName As Long) As Long
@@ -102,7 +112,7 @@ Option Private Module
         Private Declare Function LookupAccountSid Lib "advapi32.dll" Alias "LookupAccountSidA" (ByVal lpSystemName As String, ByVal Sid As Long, ByVal Name As String, cbName As Long, ByVal ReferencedDomainName As String, cbReferencedDomainName As Long, peUse As Long) As Long
         Private Declare Function MultiByteToWideChar Lib "kernel32" (ByVal codePage As Long, ByVal dwFlags As Long, ByVal lpMultiByteStr As Long, ByVal cchMultiByte As Long, ByVal lpWideCharStr As Long, ByVal cchWideChar As Long) As Long
         Private Declare Function WideCharToMultiByte Lib "kernel32" (ByVal codePage As Long, ByVal dwFlags As Long, ByVal lpWideCharStr As Long, ByVal cchWideChar As Long, ByVal lpMultiByteStr As Long, ByVal cchMultiByte As Long, ByVal lpDefaultChar As Long, ByVal lpUsedDefaultChar As Long) As Long
-        Private Declare Function SHGetKnownFolderPath Lib "shell32" (rfid As Any, ByVal dwFlags As Long, ByVal hToken As Long, ppszPath As Long) As Long
+        Private Declare Function SHGetKnownFolderPath Lib "shell32" (rfID As Any, ByVal dwFlags As Long, ByVal hToken As Long, ppszPath As Long) As Long
         Private Declare Function CLSIDFromString Lib "ole32" (ByVal lpszGuid As Long, pGuid As Any) As Long
         Private Declare Function lstrlenW Lib "kernel32" (ByVal lpString As Long) As Long
         Private Declare Sub CoTaskMemFree Lib "ole32" (ByVal pv As Long)
@@ -111,7 +121,7 @@ Option Private Module
 #End If
 
 #If VBA7 = 0 Then
-    Public Enum LongPtr
+    Private Enum LongPtr
         [_]
     End Enum
 #End If
@@ -127,214 +137,217 @@ Public Enum PageCode
 #End If
 End Enum
 
-#If Mac Then 'Special folder constants for Mac
-    'Source: https://developer.apple.com/library/archive/documentation/AppleScript/Conceptual/AppleScriptLangGuide/reference/ASLR_cmds.html
-    Public Const SFC_ApplicationSupport    As String = "application support"
-    Public Const SFC_ApplicationsFolder    As String = "applications folder"
-    Public Const SFC_Desktop               As String = "desktop"
-    Public Const SFC_DesktopPicturesFolder As String = "desktop pictures folder"
-    Public Const SFC_DocumentsFolder       As String = "documents folder"
-    Public Const SFC_DownloadsFolder       As String = "downloads folder"
-    Public Const SFC_FavoritesFolder       As String = "favorites folder"
-    Public Const SFC_FolderActionScripts   As String = "Folder Action scripts"
-    Public Const SFC_Fonts                 As String = "fonts"
-    Public Const SFC_Help                  As String = "help"
-    Public Const SFC_HomeFolder            As String = "home folder"
-    Public Const SFC_InternetPlugins       As String = "internet plugins"
-    Public Const SFC_KeychainFolder        As String = "keychain folder"
-    Public Const SFC_LibraryFolder         As String = "library folder"
-    Public Const SFC_ModemScripts          As String = "modem scripts"
-    Public Const SFC_MoviesFolder          As String = "movies folder"
-    Public Const SFC_MusicFolder           As String = "music folder"
-    Public Const SFC_PicturesFolder        As String = "pictures folder"
-    Public Const SFC_Preferences           As String = "preferences"
-    Public Const SFC_PrinterDescriptions   As String = "printer descriptions"
-    Public Const SFC_PublicFolder          As String = "public folder"
-    Public Const SFC_ScriptingAdditions    As String = "scripting additions"
-    Public Const SFC_ScriptsFolder         As String = "scripts folder"
-    Public Const SFC_ServicesFolder        As String = "services folder"
-    Public Const SFC_SharedDocuments       As String = "shared documents"
-    Public Const SFC_SharedLibraries       As String = "shared libraries"
-    Public Const SFC_SitesFolder           As String = "sites folder"
-    Public Const SFC_StartupDisk           As String = "startup disk"
-    Public Const SFC_StartupItems          As String = "startup items"
-    Public Const SFC_SystemFolder          As String = "system folder"
-    Public Const SFC_SystemPreferences     As String = "system preferences"
-    Public Const SFC_TemporaryItems        As String = "temporary items"
-    Public Const SFC_Trash                 As String = "trash"
-    Public Const SFC_UsersFolder           As String = "users folder"
-    Public Const SFC_UtilitiesFolder       As String = "utilities folder"
-    Public Const SFC_WorkflowsFolder       As String = "workflows folder"
-                                      
-    'Classic domain only
-    Public Const SFC_AppleMenu             As String = "apple menu"
-    Public Const SFC_ControlPanels         As String = "control panels"
-    Public Const SFC_ControlStripModules   As String = "control strip modules"
-    Public Const SFC_Extensions            As String = "extensions"
-    Public Const SFC_LauncherItemsFolder   As String = "launcher items folder"
-    Public Const SFC_PrinterDrivers        As String = "printer drivers"
-    Public Const SFC_Printmonitor          As String = "printmonitor"
-    Public Const SFC_ShutdownFolder        As String = "shutdown folder"
-    Public Const SFC_SpeakableItems        As String = "speakable items"
-    Public Const SFC_Stationery            As String = "stationery"
-    Public Const SFC_Voices                As String = "voices"
-
-    'The following domain names are valid:
-    Public Const DOMAIN_System  As String = "system"
-    Public Const DOMAIN_Local   As String = "local"
-    Public Const DOMAIN_Network As String = "network"
-    Public Const DOMAIN_User    As String = "user"
-    Public Const DOMAIN_Classic As String = "classic"
+#If Mac Then
+    Public Enum SpecialFolderConstant 'See 'GetSpecialFolderConstant'
+        SFC_ApplicationSupport
+        [_minSFC] = SFC_ApplicationSupport
+        SFC_ApplicationsFolder
+        SFC_Desktop
+        SFC_DesktopPicturesFolder
+        SFC_DocumentsFolder
+        SFC_DownloadsFolder
+        SFC_FavoritesFolder
+        SFC_FolderActionScripts
+        SFC_Fonts
+        SFC_Help
+        SFC_HomeFolder
+        SFC_InternetPlugins
+        SFC_KeychainFolder
+        SFC_LibraryFolder
+        SFC_ModemScripts
+        SFC_MoviesFolder
+        SFC_MusicFolder
+        SFC_PicturesFolder
+        SFC_Preferences
+        SFC_PrinterDescriptions
+        SFC_PublicFolder
+        SFC_ScriptingAdditions
+        SFC_ScriptsFolder
+        SFC_ServicesFolder
+        SFC_SharedDocuments
+        SFC_SharedLibraries
+        SFC_SitesFolder
+        SFC_StartupDisk
+        SFC_StartupItems
+        SFC_SystemFolder
+        SFC_SystemPreferences
+        SFC_TemporaryItems
+        SFC_Trash
+        SFC_UsersFolder
+        SFC_UtilitiesFolder
+        SFC_WorkflowsFolder
+        '
+        'Classic domain only
+        SFC_AppleMenu
+        SFC_ControlPanels
+        SFC_ControlStripModules
+        SFC_Extensions
+        SFC_LauncherItemsFolder
+        SFC_PrinterDrivers
+        SFC_Printmonitor
+        SFC_ShutdownFolder
+        SFC_SpeakableItems
+        SFC_Stationery
+        SFC_Voices
+        [_maxSFC] = SFC_Voices
+    End Enum
+    Public Enum SpecialFolderDomain 'See 'GetSpecialFolderDomain
+        [_sfdNone] = 0
+        [_minSFD] = [_sfdNone]
+        sfd_System
+        sfd_Local
+        sfd_Network
+        sfd_User
+        sfd_Classic
+        [_maxSFD] = sfd_Classic
+    End Enum
 #Else
-    'List of standard KnownFolderIDs, declarations for VBA
-    'Source: KnownFolders.h (Windows 11 SDK 10.0.22621.0) (sorted alphabetically)
-    'Note: Most of the FOLDERIDs that are available on a specific device seem to
-    '      be registered in the windows registry under
-    '      HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FolderDescriptions
-    '      However, it seems that sometimes the SHGetKnownFolderPath function can
-    '      process a FOLDERID even if not present in said registry location.
-    Public Const FOLDERID_AccountPictures        As String = "{008ca0b1-55b4-4c56-b8a8-4de4b299d3be}"
-    Public Const FOLDERID_AddNewPrograms         As String = "{de61d971-5ebc-4f02-a3a9-6c82895e5c04}"
-    Public Const FOLDERID_AdminTools             As String = "{724EF170-A42D-4FEF-9F26-B60E846FBA4F}"
-    Public Const FOLDERID_AllAppMods             As String = "{7ad67899-66af-43ba-9156-6aad42e6c596}"
-    Public Const FOLDERID_AppCaptures            As String = "{EDC0FE71-98D8-4F4A-B920-C8DC133CB165}"
-    Public Const FOLDERID_AppDataDesktop         As String = "{B2C5E279-7ADD-439F-B28C-C41FE1BBF672}"
-    Public Const FOLDERID_AppDataDocuments       As String = "{7BE16610-1F7F-44AC-BFF0-83E15F2FFCA1}"
-    Public Const FOLDERID_AppDataFavorites       As String = "{7CFBEFBC-DE1F-45AA-B843-A542AC536CC9}"
-    Public Const FOLDERID_AppDataProgramData     As String = "{559D40A3-A036-40FA-AF61-84CB430A4D34}"
-    Public Const FOLDERID_ApplicationShortcuts   As String = "{A3918781-E5F2-4890-B3D9-A7E54332328C}"
-    Public Const FOLDERID_AppsFolder             As String = "{1e87508d-89c2-42f0-8a7e-645a0f50ca58}"
-    Public Const FOLDERID_AppUpdates             As String = "{a305ce99-f527-492b-8b1a-7e76fa98d6e4}"
-    Public Const FOLDERID_CameraRoll             As String = "{AB5FB87B-7CE2-4F83-915D-550846C9537B}"
-    Public Const FOLDERID_CameraRollLibrary      As String = "{2B20DF75-1EDA-4039-8097-38798227D5B7}"
-    Public Const FOLDERID_CDBurning              As String = "{9E52AB10-F80D-49DF-ACB8-4330F5687855}"
-    Public Const FOLDERID_ChangeRemovePrograms   As String = "{df7266ac-9274-4867-8d55-3bd661de872d}"
-    Public Const FOLDERID_CommonAdminTools       As String = "{D0384E7D-BAC3-4797-8F14-CBA229B392B5}"
-    Public Const FOLDERID_CommonOEMLinks         As String = "{C1BAE2D0-10DF-4334-BEDD-7AA20B227A9D}"
-    Public Const FOLDERID_CommonPrograms         As String = "{0139D44E-6AFE-49F2-8690-3DAFCAE6FFB8}"
-    Public Const FOLDERID_CommonStartMenu        As String = "{A4115719-D62E-491D-AA7C-E74B8BE3B067}"
-    Public Const FOLDERID_CommonStartMenuPlaces  As String = "{A440879F-87A0-4F7D-B700-0207B966194A}"
-    Public Const FOLDERID_CommonStartup          As String = "{82A5EA35-D9CD-47C5-9629-E15D2F714E6E}"
-    Public Const FOLDERID_CommonTemplates        As String = "{B94237E7-57AC-4347-9151-B08C6C32D1F7}"
-    Public Const FOLDERID_ComputerFolder         As String = "{0AC0837C-BBF8-452A-850D-79D08E667CA7}"
-    Public Const FOLDERID_ConflictFolder         As String = "{4bfefb45-347d-4006-a5be-ac0cb0567192}"
-    Public Const FOLDERID_ConnectionsFolder      As String = "{6F0CD92B-2E97-45D1-88FF-B0D186B8DEDD}"
-    Public Const FOLDERID_Contacts               As String = "{56784854-C6CB-462b-8169-88E350ACB882}"
-    Public Const FOLDERID_ControlPanelFolder     As String = "{82A74AEB-AEB4-465C-A014-D097EE346D63}"
-    Public Const FOLDERID_Cookies                As String = "{2B0F765D-C0E9-4171-908E-08A611B84FF6}"
-    Public Const FOLDERID_CurrentAppMods         As String = "{3db40b20-2a30-4dbe-917e-771dd21dd099}"
-    Public Const FOLDERID_Desktop                As String = "{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}"
-    Public Const FOLDERID_DevelopmentFiles       As String = "{DBE8E08E-3053-4BBC-B183-2A7B2B191E59}"
-    Public Const FOLDERID_Device                 As String = "{1C2AC1DC-4358-4B6C-9733-AF21156576F0}"
-    Public Const FOLDERID_DeviceMetadataStore    As String = "{5CE4A5E9-E4EB-479D-B89F-130C02886155}"
-    Public Const FOLDERID_Documents              As String = "{FDD39AD0-238F-46AF-ADB4-6C85480369C7}"
-    Public Const FOLDERID_DocumentsLibrary       As String = "{7b0db17d-9cd2-4a93-9733-46cc89022e7c}"
-    Public Const FOLDERID_Downloads              As String = "{374DE290-123F-4565-9164-39C4925E467B}"
-    Public Const FOLDERID_Favorites              As String = "{1777F761-68AD-4D8A-87BD-30B759FA33DD}"
-    Public Const FOLDERID_Fonts                  As String = "{FD228CB7-AE11-4AE3-864C-16F3910AB8FE}"
-    Public Const FOLDERID_Games                  As String = "{CAC52C1A-B53D-4edc-92D7-6B2E8AC19434}"
-    Public Const FOLDERID_GameTasks              As String = "{054FAE61-4DD8-4787-80B6-090220C4B700}"
-    Public Const FOLDERID_History                As String = "{D9DC8A3B-B784-432E-A781-5A1130A75963}"
-    Public Const FOLDERID_HomeGroup              As String = "{52528A6B-B9E3-4add-B60D-588C2DBA842D}"
-    Public Const FOLDERID_HomeGroupCurrentUser   As String = "{9B74B6A3-0DFD-4f11-9E78-5F7800F2E772}"
-    Public Const FOLDERID_ImplicitAppShortcuts   As String = "{bcb5256f-79f6-4cee-b725-dc34e402fd46}"
-    Public Const FOLDERID_InternetCache          As String = "{352481E8-33BE-4251-BA85-6007CAEDCF9D}"
-    Public Const FOLDERID_InternetFolder         As String = "{4D9F7874-4E0C-4904-967B-40B0D20C3E4B}"
-    Public Const FOLDERID_Libraries              As String = "{1B3EA5DC-B587-4786-B4EF-BD1DC332AEAE}"
-    Public Const FOLDERID_Links                  As String = "{bfb9d5e0-c6a9-404c-b2b2-ae6db6af4968}"
-    Public Const FOLDERID_LocalAppData           As String = "{F1B32785-6FBA-4FCF-9D55-7B8E7F157091}"
-    Public Const FOLDERID_LocalAppDataLow        As String = "{A520A1A4-1780-4FF6-BD18-167343C5AF16}"
-    Public Const FOLDERID_LocalDocuments         As String = "{f42ee2d3-909f-4907-8871-4c22fc0bf756}"
-    Public Const FOLDERID_LocalDownloads         As String = "{7d83ee9b-2244-4e70-b1f5-5393042af1e4}"
-    Public Const FOLDERID_LocalizedResourcesDir  As String = "{2A00375E-224C-49DE-B8D1-440DF7EF3DDC}"
-    Public Const FOLDERID_LocalMusic             As String = "{a0c69a99-21c8-4671-8703-7934162fcf1d}"
-    Public Const FOLDERID_LocalPictures          As String = "{0ddd015d-b06c-45d5-8c4c-f59713854639}"
-    Public Const FOLDERID_LocalStorage           As String = "{B3EB08D3-A1F3-496B-865A-42B536CDA0EC}"
-    Public Const FOLDERID_LocalVideos            As String = "{35286a68-3c57-41a1-bbb1-0eae73d76c95}"
-    Public Const FOLDERID_Music                  As String = "{4BD8D571-6D19-48D3-BE97-422220080E43}"
-    Public Const FOLDERID_MusicLibrary           As String = "{2112AB0A-C86A-4ffe-A368-0DE96E47012E}"
-    Public Const FOLDERID_NetHood                As String = "{C5ABBF53-E17F-4121-8900-86626FC2C973}"
-    Public Const FOLDERID_NetworkFolder          As String = "{D20BEEC4-5CA8-4905-AE3B-BF251EA09B53}"
-    Public Const FOLDERID_Objects3D              As String = "{31C0DD25-9439-4F12-BF41-7FF4EDA38722}"
-    Public Const FOLDERID_OneDrive               As String = "{A52BBA46-E9E1-435f-B3D9-28DAA648C0F6}"
-    Public Const FOLDERID_OriginalImages         As String = "{2C36C0AA-5812-4b87-BFD0-4CD0DFB19B39}"
-    Public Const FOLDERID_PhotoAlbums            As String = "{69D2CF90-FC33-4FB7-9A0C-EBB0F0FCB43C}"
-    Public Const FOLDERID_Pictures               As String = "{33E28130-4E1E-4676-835A-98395C3BC3BB}"
-    Public Const FOLDERID_PicturesLibrary        As String = "{A990AE9F-A03B-4e80-94BC-9912D7504104}"
-    Public Const FOLDERID_Playlists              As String = "{DE92C1C7-837F-4F69-A3BB-86E631204A23}"
-    Public Const FOLDERID_PrintersFolder         As String = "{76FC4E2D-D6AD-4519-A663-37BD56068185}"
-    Public Const FOLDERID_PrintHood              As String = "{9274BD8D-CFD1-41C3-B35E-B13F55A758F4}"
-    Public Const FOLDERID_Profile                As String = "{5E6C858F-0E22-4760-9AFE-EA3317B67173}"
-    Public Const FOLDERID_ProgramData            As String = "{62AB5D82-FDC1-4DC3-A9DD-070D1D495D97}"
-    Public Const FOLDERID_ProgramFiles           As String = "{905e63b6-c1bf-494e-b29c-65b732d3d21a}"
-    Public Const FOLDERID_ProgramFilesCommon     As String = "{F7F1ED05-9F6D-47A2-AAAE-29D317C6F066}"
-    Public Const FOLDERID_ProgramFilesCommonX64  As String = "{6365D5A7-0F0D-45e5-87F6-0DA56B6A4F7D}"
-    Public Const FOLDERID_ProgramFilesCommonX86  As String = "{DE974D24-D9C6-4D3E-BF91-F4455120B917}"
-    Public Const FOLDERID_ProgramFilesX64        As String = "{6D809377-6AF0-444b-8957-A3773F02200E}"
-    Public Const FOLDERID_ProgramFilesX86        As String = "{7C5A40EF-A0FB-4BFC-874A-C0F2E0B9FA8E}"
-    Public Const FOLDERID_Programs               As String = "{A77F5D77-2E2B-44C3-A6A2-ABA601054A51}"
-    Public Const FOLDERID_Public                 As String = "{DFDF76A2-C82A-4D63-906A-5644AC457385}"
-    Public Const FOLDERID_PublicDesktop          As String = "{C4AA340D-F20F-4863-AFEF-F87EF2E6BA25}"
-    Public Const FOLDERID_PublicDocuments        As String = "{ED4824AF-DCE4-45A8-81E2-FC7965083634}"
-    Public Const FOLDERID_PublicDownloads        As String = "{3D644C9B-1FB8-4f30-9B45-F670235F79C0}"
-    Public Const FOLDERID_PublicGameTasks        As String = "{DEBF2536-E1A8-4c59-B6A2-414586476AEA}"
-    Public Const FOLDERID_PublicLibraries        As String = "{48daf80b-e6cf-4f4e-b800-0e69d84ee384}"
-    Public Const FOLDERID_PublicMusic            As String = "{3214FAB5-9757-4298-BB61-92A9DEAA44FF}"
-    Public Const FOLDERID_PublicPictures         As String = "{B6EBFB86-6907-413C-9AF7-4FC2ABF07CC5}"
-    Public Const FOLDERID_PublicRingtones        As String = "{E555AB60-153B-4D17-9F04-A5FE99FC15EC}"
-    Public Const FOLDERID_PublicUserTiles        As String = "{0482af6c-08f1-4c34-8c90-e17ec98b1e17}"
-    Public Const FOLDERID_PublicVideos           As String = "{2400183A-6185-49FB-A2D8-4A392A602BA3}"
-    Public Const FOLDERID_QuickLaunch            As String = "{52a4f021-7b75-48a9-9f6b-4b87a210bc8f}"
-    Public Const FOLDERID_Recent                 As String = "{AE50C081-EBD2-438A-8655-8A092E34987A}"
-    Public Const FOLDERID_RecordedCalls          As String = "{2f8b40c2-83ed-48ee-b383-a1f157ec6f9a}"
-    Public Const FOLDERID_RecordedTVLibrary      As String = "{1A6FDBA2-F42D-4358-A798-B74D745926C5}"
-    Public Const FOLDERID_RecycleBinFolder       As String = "{B7534046-3ECB-4C18-BE4E-64CD4CB7D6AC}"
-    Public Const FOLDERID_ResourceDir            As String = "{8AD10C31-2ADB-4296-A8F7-E4701232C972}"
-    Public Const FOLDERID_RetailDemo             As String = "{12D4C69E-24AD-4923-BE19-31321C43A767}"
-    Public Const FOLDERID_Ringtones              As String = "{C870044B-F49E-4126-A9C3-B52A1FF411E8}"
-    Public Const FOLDERID_RoamedTileImages       As String = "{AAA8D5A5-F1D6-4259-BAA8-78E7EF60835E}"
-    Public Const FOLDERID_RoamingAppData         As String = "{3EB685DB-65F9-4CF6-A03A-E3EF65729F3D}"
-    Public Const FOLDERID_RoamingTiles           As String = "{00BCFC5A-ED94-4e48-96A1-3F6217F21990}"
-    Public Const FOLDERID_SampleMusic            As String = "{B250C668-F57D-4EE1-A63C-290EE7D1AA1F}"
-    Public Const FOLDERID_SamplePictures         As String = "{C4900540-2379-4C75-844B-64E6FAF8716B}"
-    Public Const FOLDERID_SamplePlaylists        As String = "{15CA69B3-30EE-49C1-ACE1-6B5EC372AFB5}"
-    Public Const FOLDERID_SampleVideos           As String = "{859EAD94-2E85-48AD-A71A-0969CB56A6CD}"
-    Public Const FOLDERID_SavedGames             As String = "{4C5C32FF-BB9D-43b0-B5B4-2D72E54EAAA4}"
-    Public Const FOLDERID_SavedPictures          As String = "{3B193882-D3AD-4eab-965A-69829D1FB59F}"
-    Public Const FOLDERID_SavedPicturesLibrary   As String = "{E25B5812-BE88-4bd9-94B0-29233477B6C3}"
-    Public Const FOLDERID_SavedSearches          As String = "{7d1d3a04-debb-4115-95cf-2f29da2920da}"
-    Public Const FOLDERID_Screenshots            As String = "{b7bede81-df94-4682-a7d8-57a52620b86f}"
-    Public Const FOLDERID_SEARCH_CSC             As String = "{ee32e446-31ca-4aba-814f-a5ebd2fd6d5e}"
-    Public Const FOLDERID_SEARCH_MAPI            As String = "{98ec0e18-2098-4d44-8644-66979315a281}"
-    Public Const FOLDERID_SearchHistory          As String = "{0D4C3DB6-03A3-462F-A0E6-08924C41B5D4}"
-    Public Const FOLDERID_SearchHome             As String = "{190337d1-b8ca-4121-a639-6d472d16972a}"
-    Public Const FOLDERID_SearchTemplates        As String = "{7E636BFE-DFA9-4D5E-B456-D7B39851D8A9}"
-    Public Const FOLDERID_SendTo                 As String = "{8983036C-27C0-404B-8F08-102D10DCFD74}"
-    Public Const FOLDERID_SidebarDefaultParts    As String = "{7B396E54-9EC5-4300-BE0A-2482EBAE1A26}"
-    Public Const FOLDERID_SidebarParts           As String = "{A75D362E-50FC-4fb7-AC2C-A8BEAA314493}"
-    Public Const FOLDERID_SkyDrive               As String = "{A52BBA46-E9E1-435f-B3D9-28DAA648C0F6}"
-    Public Const FOLDERID_SkyDriveCameraRoll     As String = "{767E6811-49CB-4273-87C2-20F355E1085B}"
-    Public Const FOLDERID_SkyDriveDocuments      As String = "{24D89E24-2F19-4534-9DDE-6A6671FBB8FE}"
-    Public Const FOLDERID_SkyDriveMusic          As String = "{C3F2459E-80D6-45DC-BFEF-1F769F2BE730}"
-    Public Const FOLDERID_SkyDrivePictures       As String = "{339719B5-8C47-4894-94C2-D8F77ADD44A6}"
-    Public Const FOLDERID_StartMenu              As String = "{625B53C3-AB48-4EC1-BA1F-A1EF4146FC19}"
-    Public Const FOLDERID_StartMenuAllPrograms   As String = "{F26305EF-6948-40B9-B255-81453D09C785}"
-    Public Const FOLDERID_Startup                As String = "{B97D20BB-F46A-4C97-BA10-5E3608430854}"
-    Public Const FOLDERID_SyncManagerFolder      As String = "{43668BF8-C14E-49B2-97C9-747784D784B7}"
-    Public Const FOLDERID_SyncResultsFolder      As String = "{289a9a43-be44-4057-a41b-587a76d7e7f9}"
-    Public Const FOLDERID_SyncSetupFolder        As String = "{0F214138-B1D3-4a90-BBA9-27CBC0C5389A}"
-    Public Const FOLDERID_System                 As String = "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}"
-    Public Const FOLDERID_SystemX86              As String = "{D65231B0-B2F1-4857-A4CE-A8E7C6EA7D27}"
-    Public Const FOLDERID_Templates              As String = "{A63293E8-664E-48DB-A079-DF759E0509F7}"
-    Public Const FOLDERID_UserPinned             As String = "{9e3995ab-1f9c-4f13-b827-48b24b6c7174}"
-    Public Const FOLDERID_UserProfiles           As String = "{0762D272-C50A-4BB0-A382-697DCD729B80}"
-    Public Const FOLDERID_UserProgramFiles       As String = "{5cd7aee2-2219-4a67-b85d-6c9ce15660cb}"
-    Public Const FOLDERID_UserProgramFilesCommon As String = "{bcbd3057-ca5c-4622-b42d-bc56db0ae516}"
-    Public Const FOLDERID_UsersFiles             As String = "{f3ce0f7c-4901-4acc-8648-d5d44b04ef8f}"
-    Public Const FOLDERID_UsersLibraries         As String = "{A302545D-DEFF-464b-ABE8-61C8648D939B}"
-    Public Const FOLDERID_Videos                 As String = "{18989B1D-99B5-455B-841C-AB7C74E4DDFC}"
-    Public Const FOLDERID_VideosLibrary          As String = "{491E922F-5643-4af4-A7EB-4E7A138D8174}"
-    Public Const FOLDERID_Windows                As String = "{F38BF404-1D43-42F2-9305-67DE0B28FC23}"
+    Public Enum KnownFolderID 'See 'GetKnownFolderCLSID' method
+        kfID_AccountPictures = 0
+        [_minKfID] = kfID_AccountPictures
+        kfID_AddNewPrograms
+        kfID_AdminTools
+        kfID_AllAppMods
+        kfID_AppCaptures
+        kfID_AppDataDesktop
+        kfID_AppDataDocuments
+        kfID_AppDataFavorites
+        kfID_AppDataProgramData
+        kfID_ApplicationShortcuts
+        kfID_AppsFolder
+        kfID_AppUpdates
+        kfID_CameraRoll
+        kfID_CameraRollLibrary
+        kfID_CDBurning
+        kfID_ChangeRemovePrograms
+        kfID_CommonAdminTools
+        kfID_CommonOEMLinks
+        kfID_CommonPrograms
+        kfID_CommonStartMenu
+        kfID_CommonStartMenuPlaces
+        kfID_CommonStartup
+        kfID_CommonTemplates
+        kfID_ComputerFolder
+        kfID_ConflictFolder
+        kfID_ConnectionsFolder
+        kfID_Contacts
+        kfID_ControlPanelFolder
+        kfID_Cookies
+        kfID_CurrentAppMods
+        kfID_Desktop
+        kfID_DevelopmentFiles
+        kfID_Device
+        kfID_DeviceMetadataStore
+        kfID_Documents
+        kfID_DocumentsLibrary
+        kfID_Downloads
+        kfID_Favorites
+        kfID_Fonts
+        kfID_Games
+        kfID_GameTasks
+        kfID_History
+        kfID_HomeGroup
+        kfID_HomeGroupCurrentUser
+        kfID_ImplicitAppShortcuts
+        kfID_InternetCache
+        kfID_InternetFolder
+        kfID_Libraries
+        kfID_Links
+        kfID_LocalAppData
+        kfID_LocalAppDataLow
+        kfID_LocalDocuments
+        kfID_LocalDownloads
+        kfID_LocalizedResourcesDir
+        kfID_LocalMusic
+        kfID_LocalPictures
+        kfID_LocalStorage
+        kfID_LocalVideos
+        kfID_Music
+        kfID_MusicLibrary
+        kfID_NetHood
+        kfID_NetworkFolder
+        kfID_Objects3D
+        kfID_OneDrive
+        kfID_OriginalImages
+        kfID_PhotoAlbums
+        kfID_Pictures
+        kfID_PicturesLibrary
+        kfID_Playlists
+        kfID_PrintersFolder
+        kfID_PrintHood
+        kfID_Profile
+        kfID_ProgramData
+        kfID_ProgramFiles
+        kfID_ProgramFilesCommon
+        kfID_ProgramFilesCommonX64
+        kfID_ProgramFilesCommonX86
+        kfID_ProgramFilesX64
+        kfID_ProgramFilesX86
+        kfID_Programs
+        kfID_Public
+        kfID_PublicDesktop
+        kfID_PublicDocuments
+        kfID_PublicDownloads
+        kfID_PublicGameTasks
+        kfID_PublicLibraries
+        kfID_PublicMusic
+        kfID_PublicPictures
+        kfID_PublicRingtones
+        kfID_PublicUserTiles
+        kfID_PublicVideos
+        kfID_QuickLaunch
+        kfID_Recent
+        kfID_RecordedCalls
+        kfID_RecordedTVLibrary
+        kfID_RecycleBinFolder
+        kfID_ResourceDir
+        kfID_RetailDemo
+        kfID_Ringtones
+        kfID_RoamedTileImages
+        kfID_RoamingAppData
+        kfID_RoamingTiles
+        kfID_SampleMusic
+        kfID_SamplePictures
+        kfID_SamplePlaylists
+        kfID_SampleVideos
+        kfID_SavedGames
+        kfID_SavedPictures
+        kfID_SavedPicturesLibrary
+        kfID_SavedSearches
+        kfID_Screenshots
+        kfID_SEARCH_CSC
+        kfID_SEARCH_MAPI
+        kfID_SearchHistory
+        kfID_SearchHome
+        kfID_SearchTemplates
+        kfID_SendTo
+        kfID_SidebarDefaultParts
+        kfID_SidebarParts
+        kfID_SkyDrive
+        kfID_SkyDriveCameraRoll
+        kfID_SkyDriveDocuments
+        kfID_SkyDriveMusic
+        kfID_SkyDrivePictures
+        kfID_StartMenu
+        kfID_StartMenuAllPrograms
+        kfID_Startup
+        kfID_SyncManagerFolder
+        kfID_SyncResultsFolder
+        kfID_SyncSetupFolder
+        kfID_System
+        kfID_SystemX86
+        kfID_Templates
+        kfID_UserPinned
+        kfID_UserProfiles
+        kfID_UserProgramFiles
+        kfID_UserProgramFilesCommon
+        kfID_UsersFiles
+        kfID_UsersLibraries
+        kfID_Videos
+        kfID_VideosLibrary
+        kfID_Windows
+        [_maxKfID] = kfID_Windows
+    End Enum
 #End If
 
 Private Type DRIVE_INFO
@@ -351,6 +364,33 @@ End Type
         data3 As Integer
         data4(0 To 7) As Byte
     End Type
+    '
+    'https://docs.microsoft.com/en-gb/windows/win32/api/commdlg/ns-commdlg-openfilenamea
+    Private Type OPENFILENAME
+        lStructSize As Long
+        hwndOwner As LongPtr
+        hInstance As LongPtr
+        lpstrFilter As LongPtr
+        lpstrCustomFilter As LongPtr
+        nMaxCustFilter As Long
+        nFilterIndex As Long
+        lpstrFile As LongPtr
+        nMaxFile As Long
+        lpstrFileTitle As LongPtr
+        nMaxFileTitle As Long
+        lpstrInitialDir As LongPtr
+        lpstrTitle As LongPtr
+        flags As Long
+        nFileOffset As Integer
+        nFileExtension As Integer
+        lpstrDefExt As LongPtr
+        lCustData As LongPtr
+        lpfnHook As LongPtr
+        lpTemplateName As LongPtr
+        pvReserved As LongPtr
+        dwReserved As Long
+        flagsEx As Long
+    End Type
 #End If
 
 Private Type ONEDRIVE_PROVIDER
@@ -361,30 +401,50 @@ Private Type ONEDRIVE_PROVIDER
     accountIndex As Long
     baseMount As String
     syncID As String
+    #If Mac Then
+        syncDir As String
+    #End If
 End Type
 Private Type ONEDRIVE_PROVIDERS
     arr() As ONEDRIVE_PROVIDER
     pCount As Long
     isSet As Boolean
+    lastCacheUpdate As Date
 End Type
 
 Private Type ONEDRIVE_ACCOUNT_INFO
-    accountName As String
     accountIndex As Long
+    accountName As String
     cID As String
-    datPath As String
-    datDateTime As Date
-    folderPath As String
-    groupPath As String
     clientPath As String
+    datPath As String
+    dbPath As String
+    folderPath As String
+    globalPath As String
+    groupPath As String
+    iniDateTime As Date
     iniPath As String
     isPersonal As Boolean
     isValid As Boolean
+    hasDatFile As Boolean
 End Type
 Private Type ONEDRIVE_ACCOUNTS_INFO
     arr() As ONEDRIVE_ACCOUNT_INFO
     pCount As Long
     isSet As Boolean
+End Type
+
+Private Type DirInfo
+    dirID As String
+    parentID As String
+    dirName As String
+    isNameASCII As Boolean
+End Type
+Private Type DirsInfo
+    idToIndex As Collection
+    arrDirs() As DirInfo
+    dirCount As Long
+    dirUBound As Long
 End Type
 
 #If Mac Then
@@ -393,11 +453,12 @@ End Type
     Public Const PATH_SEPARATOR = "\"
 #End If
 
-Private Const vbErrInvalidProcedureCall   As Long = 5
-Private Const vbErrInternalError          As Long = 51
-Private Const vbErrPathFileAccessError    As Long = 75
-Private Const vbErrPathNotFound           As Long = 76
-Private Const vbErrComponentNotRegistered As Long = 336
+Private Const vbErrInvalidProcedureCall        As Long = 5
+Private Const vbErrInternalError               As Long = 51
+Private Const vbErrPathFileAccessError         As Long = 75
+Private Const vbErrPathNotFound                As Long = 76
+Private Const vbErrInvalidFormatInResourceFile As Long = 325
+Private Const vbErrComponentNotRegistered      As Long = 336
 
 Private m_providers As ONEDRIVE_PROVIDERS
 #If Mac Then
@@ -406,38 +467,51 @@ Private m_providers As ONEDRIVE_PROVIDERS
 
 '*******************************************************************************
 'Returns a Collection of file paths by using a FilePicker FileDialog
+'Always returns an instantiated Collection
+'
+'More than one file extension may be specified in the 'filterExtensions' param
+'   and each must be separated by a semi-colon. For example: "*.txt;*.csv".
+'   Spaces will be ignored
 '*******************************************************************************
-#If Mac Then
-    'Not implemented
-    'Seems achievable via script:
-    '   - https://stackoverflow.com/a/15546518/8488913
-    '   - https://stackoverflow.com/a/37411960/8488913
-#Else
 Public Function BrowseForFiles(Optional ByRef initialPath As String _
                              , Optional ByRef dialogTitle As String _
                              , Optional ByRef filterDesc As String _
-                             , Optional ByRef filterList As String _
+                             , Optional ByRef filterExtensions As String _
                              , Optional ByVal allowMultiFiles As Boolean = True) As Collection
-    'In case reference to Microsoft Office X.XX Object Library is missing
-    Const dialogTypeFilePicker As Long = 3 'msoFileDialogFilePicker
+    'msoFileDialogFilePicker = 3 - only available for some Microsoft apps
+    Const dialogTypeFilePicker As Long = 3
     Const actionButton As Long = -1
+    Dim filePicker As Object
+    Dim app As Object: Set app = Application 'Late-binded for compatibility
     '
-    With Application.FileDialog(dialogTypeFilePicker)
+    On Error Resume Next
+    Set filePicker = app.FileDialog(dialogTypeFilePicker)
+    On Error GoTo 0
+    '
+    If filePicker Is Nothing Then
+    #If Mac Then
+        'Not implemented
+        'Seems achievable via script:
+        '   - https://stackoverflow.com/a/15546518/8488913
+        '   - https://stackoverflow.com/a/37411960/8488913
+    #Else
+        Set BrowseForFiles = BrowseFilesAPI(initialPath, dialogTitle, filterDesc _
+                                          , filterExtensions, allowMultiFiles)
+    #End If
+        Exit Function
+    End If
+    '
+    With filePicker
         If LenB(dialogTitle) > 0 Then .Title = dialogTitle
         If LenB(initialPath) > 0 Then .InitialFileName = initialPath
-        If LenB(.InitialFileName) = 0 Then
-            Dim app As Object: Set app = Application 'Needs to be late-binded
-            Select Case Application.Name
-                Case "Microsoft Excel": .InitialFileName = GetLocalPath(app.ThisWorkbook.Path, , True)
-                Case "Microsoft Word":  .InitialFileName = GetLocalPath(app.ThisDocument.Path, , True)
-            End Select
-        End If
-        '
         .AllowMultiSelect = allowMultiFiles
-        .Filters.Clear 'Allows all file types
-        On Error Resume Next
-        .Filters.Add filterDesc, filterList
-        On Error GoTo 0
+        .Filters.Clear
+        If LenB(filterExtensions) > 0 Then
+            On Error Resume Next
+            .Filters.Add filterDesc, filterExtensions
+            On Error GoTo 0
+        End If
+        If .Filters.Count = 0 Then .Filters.Add "All Files", "*.*"
         '
         Set BrowseForFiles = New Collection
         If .Show = actionButton Then
@@ -448,6 +522,106 @@ Public Function BrowseForFiles(Optional ByRef initialPath As String _
             Next v
         End If
     End With
+End Function
+
+'*******************************************************************************
+'Returns a Collection of file paths by creating an Open dialog box that lets the
+'   user specify the drive, directory, and the name of the file(s)
+'*******************************************************************************
+#If Windows Then
+Private Function BrowseFilesAPI(ByRef initialPath As String _
+                              , ByRef dialogTitle As String _
+                              , ByRef filterDesc As String _
+                              , ByRef filterExtensions As String _
+                              , ByVal allowMultiFiles As Boolean) As Collection
+    Dim ofName As OPENFILENAME
+    Dim resultPaths As New Collection
+    Dim buffFiles As String
+    Dim buffFilter As String
+    Dim temp As String
+    '
+    With ofName
+        On Error Resume Next
+        Dim app As Object: Set app = Application
+        .hwndOwner = app.Hwnd
+        On Error GoTo 0
+        '
+        .lStructSize = LenB(ofName)
+        If LenB(filterExtensions) = 0 Then
+            buffFilter = "All Files (*.*)" & vbNullChar & "*.*"
+        Else
+            temp = Replace(filterExtensions, ",", ";")
+            buffFilter = filterDesc & " (" & temp & ")" & vbNullChar & temp
+        End If
+        buffFilter = buffFilter & vbNullChar & vbNullChar
+        .lpstrFilter = StrPtr(buffFilter)
+        '
+        .nMaxFile = &H100000
+        buffFiles = Space$(.nMaxFile)
+        .lpstrFile = StrPtr(buffFiles)
+        .lpstrInitialDir = StrPtr(initialPath)
+        .lpstrTitle = StrPtr(dialogTitle)
+        '
+        Const OFN_HIDEREADONLY As Long = &H4&
+        Const OFN_ALLOWMULTISELECT As Long = &H200&
+        Const OFN_PATHMUSTEXIST As Long = &H800&
+        Const OFN_FILEMUSTEXIST As Long = &H1000&
+        Const OFN_EXPLORER As Long = &H80000
+        '
+        .flags = OFN_HIDEREADONLY Or OFN_PATHMUSTEXIST Or OFN_FILEMUSTEXIST
+        If allowMultiFiles Then
+            .flags = .flags Or OFN_ALLOWMULTISELECT Or OFN_EXPLORER
+        End If
+    End With
+    '
+    Do
+        Const FNERR_BUFFERTOOSMALL As Long = &H3003&
+        Dim mustRetry As Boolean: mustRetry = False
+        Dim i As Long
+        Dim j As Long
+        '
+        If GetOpenFileNameW(ofName) Then
+            i = InStr(1, buffFiles, vbNullChar)
+            temp = Left$(buffFiles, i - 1)
+            '
+            If allowMultiFiles Then
+                j = InStr(i + 1, buffFiles, vbNullChar)
+                If j = i + 1 Then 'Single file selected
+                    resultPaths.Add temp
+                Else
+                    temp = BuildPath(temp, vbNullString) 'Parent folder
+                    Do
+                        resultPaths.Add temp & Mid$(buffFiles, i + 1, j - i)
+                        i = j
+                        j = InStr(i + 1, buffFiles, vbNullChar)
+                    Loop Until j = i + 1
+                End If
+            Else
+                resultPaths.Add temp
+            End If
+        ElseIf CommDlgExtendedError() = FNERR_BUFFERTOOSMALL Then
+            Dim b() As Byte: b = LeftB$(buffFiles, 4)
+            '
+            If b(3) And &H80 Then
+                mustRetry = (MsgBox("Try selecting fewer files" _
+                                  , vbExclamation + vbRetryCancel _
+                                  , "Insufficient memory") = vbRetry)
+            Else
+                With ofName
+                    .nMaxFile = b(3)
+                    For i = 2 To 0 Step -1
+                        .nMaxFile = .nMaxFile * &H100& + b(i)
+                    Next i
+                    buffFiles = Space$(.nMaxFile)
+                    .lpstrFile = StrPtr(buffFiles)
+                End With
+                MsgBox "Did not expect so many files. Please select again!" _
+                     , vbInformation, "Repeat selection"
+                mustRetry = True
+            End If
+        End If
+    Loop Until Not mustRetry
+    Set BrowseFilesAPI = resultPaths
 End Function
 #End If
 
@@ -460,13 +634,13 @@ Public Function BrowseForFolder(Optional ByRef initialPath As String _
     'If user has not accesss [initialPath] previously, will be prompted by
     'Mac OS to Grant permission to directory
     If LenB(initialPath) > 0 Then
-        If Not Right(initialPath, 1) = Application.PathSeparator Then
-            initialPath = initialPath & Application.PathSeparator
+        If Not Right(initialPath, 1) = PATH_SEPARATOR Then
+            initialPath = initialPath & PATH_SEPARATOR
         End If
         Dir initialPath, Attributes:=vbDirectory
     End If
     Dim retPath
-    If LenB(dialogTitle) = 0 Then dialogTitle = "Choose Foldler"
+    If LenB(dialogTitle) = 0 Then dialogTitle = "Choose Folder"
     retPath = MacScript("choose folder with prompt """ & dialogTitle & """ as string")
     If Len(retPath) > 0 Then
         retPath = MacScript("POSIX path of """ & retPath & """")
@@ -481,13 +655,15 @@ Public Function BrowseForFolder(Optional ByRef initialPath As String _
     '
     With Application.FileDialog(dialogTypeFolderPicker)
         If LenB(dialogTitle) > 0 Then .Title = dialogTitle
-        If LenB(initialPath) > 0 Then .InitialFileName = initialPath
+        If LenB(initialPath) > 0 Then .InitialFileName = BuildPath(initialPath, PATH_SEPARATOR)
         If LenB(.InitialFileName) = 0 Then
             Dim app As Object: Set app = Application 'Needs to be late-binded
-            Select Case Application.Name
+            Select Case app.Name
                 Case "Microsoft Excel": .InitialFileName = GetLocalPath(app.ThisWorkbook.Path, , True)
                 Case "Microsoft Word":  .InitialFileName = GetLocalPath(app.ThisDocument.Path, , True)
             End Select
+        Else
+            .InitialFileName = BuildPath(.InitialFileName, PATH_SEPARATOR)
         End If
         If .Show = actionButton Then
             .InitialFileName = .SelectedItems.Item(1)
@@ -671,15 +847,15 @@ Public Function CopyFolder(ByRef sourcePath As String _
         Next subFolderPath
     End If
     '
-    Dim FilePath As Variant
+    Dim filePath As Variant
     Dim newFilePath As String
     '
-    For Each FilePath In GetFiles(fixedSrc, includeSubFolders, True, True)
-        newFilePath = Replace(FilePath, fixedSrc, fixedDst)
-        If Not CopyFile(CStr(FilePath), newFilePath, failIfExists) Then
+    For Each filePath In GetFiles(fixedSrc, includeSubFolders, True, True)
+        newFilePath = Replace(filePath, fixedSrc, fixedDst)
+        If Not CopyFile(CStr(filePath), newFilePath, failIfExists) Then
             If Not ignoreFailedChildren Then Exit Function
         End If
-    Next FilePath
+    Next filePath
     '
     CopyFolder = True
 End Function
@@ -731,25 +907,25 @@ End Function
 '*******************************************************************************
 'Deletes a file only. Does not support wildcards * ?
 '*******************************************************************************
-Public Function DeleteFile(ByRef FilePath As String) As Boolean
-    If LenB(FilePath) = 0 Then Exit Function
-    If Not IsFile(FilePath) Then Exit Function 'Avoid 'Kill' on folder
+Public Function DeleteFile(ByRef filePath As String) As Boolean
+    If LenB(filePath) = 0 Then Exit Function
+    If Not IsFile(filePath) Then Exit Function 'Avoid 'Kill' on folder
     '
     On Error Resume Next
     #If Windows Then
-        GetFSO.DeleteFile FilePath, True
+        GetFSO.DeleteFile filePath, True
         DeleteFile = (Err.Number = 0)
         If DeleteFile Then Exit Function
         Err.Clear
     #End If
-    SetAttr FilePath, vbNormal 'Too costly to do after failing Delete
+    SetAttr filePath, vbNormal 'Too costly to do after failing Kill
     Err.Clear
-    Kill FilePath
+    Kill filePath
     DeleteFile = (Err.Number = 0)
     On Error GoTo 0
     '
     #If Windows Then
-        If Not DeleteFile Then DeleteFile = CBool(DeleteFileW(StrPtr(FilePath)))
+        If Not DeleteFile Then DeleteFile = CBool(DeleteFileW(StrPtr(filePath)))
     #End If
 End Function
 
@@ -803,7 +979,7 @@ End Function
 '*******************************************************************************
 Private Function DeleteBottomMostFolder(ByRef folderPath As String) As Boolean
     Dim fixedPath As String: fixedPath = BuildPath(folderPath, vbNullString)
-    Dim FilePath As Variant
+    Dim filePath As Variant
     '
     On Error Resume Next
     Kill fixedPath  'Try to batch delete all files (if any)
@@ -815,9 +991,9 @@ Private Function DeleteBottomMostFolder(ByRef folderPath As String) As Boolean
     End If
     On Error GoTo 0
     '
-    For Each FilePath In GetFiles(fixedPath, False, True, True)
-        If Not DeleteFile(CStr(FilePath)) Then Exit Function
-    Next FilePath
+    For Each filePath In GetFiles(fixedPath, False, True, True)
+        If Not DeleteFile(CStr(filePath)) Then Exit Function
+    Next filePath
     '
     On Error Resume Next
     RmDir fixedPath
@@ -962,12 +1138,6 @@ Public Function FixPathSeparators(ByRef pathToFix As String) As String
         End If
         isUNC = (Left$(resultPath, 2) = "\\")
     #End If
-    
-    'Adding relative directory if specified
-    If Left$(pathToFix, 2) = ".." Or Left(pathToFix, 1) = "." Then
-        resultPath = BuildPath(CurDir, pathToFix)
-    End If
-    
     '
     Const fCurrent As String = ps & "." & ps
     Const fParent As String = ps & ".." & ps
@@ -987,7 +1157,7 @@ Public Function FixPathSeparators(ByRef pathToFix As String) As String
     i = 1
     Do
         i = InStr(i, FixPathSeparators, fParent)
-        If i = 0 Then
+        If i = 0 And Len(FixPathSeparators) > 2 Then
             i = InStr(Len(FixPathSeparators) - 2, FixPathSeparators, ps & "..")
         End If
         If i > 1 Then
@@ -997,7 +1167,7 @@ Public Function FixPathSeparators(ByRef pathToFix As String) As String
                               & Mid$(FixPathSeparators, i + 4)
             If sepIndex < i Then i = i - sepIndex
         End If
-    Loop Until i = 0
+    Loop Until i <= 1
 End Function
 
 '*******************************************************************************
@@ -1036,28 +1206,24 @@ End Function
 'Retrieves the owner name for a file path
 '*******************************************************************************
 #If Windows Then
-Public Function GetFileOwner(ByRef FilePath As String) As String
+Public Function GetFileOwner(ByRef filePath As String) As String
     Const osi As Long = 1 'OWNER_SECURITY_INFORMATION
     Dim sdSize As Long
     '
     'Get SECURITY_DESCRIPTOR required Buffer Size
-    GetFileSecurity FilePath, osi, 0, 0&, sdSize
+    GetFileSecurity filePath, osi, 0, 0&, sdSize
     If sdSize = 0 Then Exit Function
     '
     'Size the SECURITY_DESCRIPTOR buffer
     Dim sd() As Byte: ReDim sd(0 To sdSize - 1)
     '
     'Get SECURITY_DESCRIPTOR buffer
-    If GetFileSecurity(FilePath, osi, sd(0), sdSize, sdSize) = 0 Then
+    If GetFileSecurity(filePath, osi, sd(0), sdSize, sdSize) = 0 Then
         Exit Function
     End If
     '
     'Get owner SSID
-    #If VBA7 Then
-        Dim pOwner As LongPtr
-    #Else
-        Dim pOwner As Long
-    #End If
+    Dim pOwner As LongPtr
     If GetSecurityDescriptorOwner(sd(0), pOwner, 0&) = 0 Then Exit Function
     '
     'Get name and domain length
@@ -1128,7 +1294,7 @@ Private Sub AddFilesTo(ByVal collTarget As Collection _
         Const maxDirLen As Long = 247
     #End If
     Const errBadFileNameOrNumber As Long = 52
-    Dim FileName As String
+    Dim fileName As String
     Dim fullPath As String
     Dim collTemp As New Collection
     Dim dirFailed As Boolean
@@ -1136,18 +1302,18 @@ Private Sub AddFilesTo(ByVal collTarget As Collection _
     Dim fixedPath As String: fixedPath = BuildPath(folderPath, vbNullString)
     '
     On Error Resume Next
-    FileName = Dir(fixedPath, fAttribute)
+    fileName = Dir(fixedPath, fAttribute)
     dirFailed = (Err.Number = errBadFileNameOrNumber) 'Unsupported Unicode
     On Error GoTo 0
     '
-    Do While LenB(FileName) > 0
-        collTemp.Add FileName
-        If InStr(1, FileName, "?") > 0 Then 'Unsupported Unicode
+    Do While LenB(fileName) > 0
+        collTemp.Add fileName
+        If InStr(1, fileName, "?") > 0 Then 'Unsupported Unicode
             Set collTemp = New Collection
             dirFailed = True
             Exit Do
         End If
-        FileName = Dir
+        fileName = Dir
     Loop
     If dirFailed Or Len(fixedPath) > maxDirLen Then
         #If Mac Then
@@ -1219,30 +1385,196 @@ End Function
 #End If
 
 '*******************************************************************************
-'Returns path of a 'known folder' using the respective 'FOLDERID' on Windows
-'Use prefixed constants 'FOLDERID_' for the 'knownFolderID' argument
+'Returns the FOLDERID of a 'known folder' on Windows
+'Returns a null string if 'kfID' is not a valid enum value
+'Source: KnownFolders.h (Windows 11 SDK 10.0.22621.0) (sorted alphabetically)
+'Note: Most of the FOLDERIDs that are available on a specific device seem to
+'      be registered in the windows registry under
+'      HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FolderDescriptions
+'      However, it seems that sometimes the SHGetKnownFolderPath function can
+'      process a FOLDERID even if not present in said registry location.
+'*******************************************************************************
+#If Windows Then
+Public Function GetKnownFolderCLSID(ByVal kfID As KnownFolderID) As String
+    Static cids([_minKfID] To [_maxKfID]) As String
+    '
+    If kfID < [_minKfID] Or kfID > [_maxKfID] Then Exit Function
+    If LenB(cids([_minKfID])) = 0 Then
+        cids(kfID_AccountPictures) = "{008ca0b1-55b4-4c56-b8a8-4de4b299d3be}"
+        cids(kfID_AddNewPrograms) = "{de61d971-5ebc-4f02-a3a9-6c82895e5c04}"
+        cids(kfID_AdminTools) = "{724EF170-A42D-4FEF-9F26-B60E846FBA4F}"
+        cids(kfID_AllAppMods) = "{7ad67899-66af-43ba-9156-6aad42e6c596}"
+        cids(kfID_AppCaptures) = "{EDC0FE71-98D8-4F4A-B920-C8DC133CB165}"
+        cids(kfID_AppDataDesktop) = "{B2C5E279-7ADD-439F-B28C-C41FE1BBF672}"
+        cids(kfID_AppDataDocuments) = "{7BE16610-1F7F-44AC-BFF0-83E15F2FFCA1}"
+        cids(kfID_AppDataFavorites) = "{7CFBEFBC-DE1F-45AA-B843-A542AC536CC9}"
+        cids(kfID_AppDataProgramData) = "{559D40A3-A036-40FA-AF61-84CB430A4D34}"
+        cids(kfID_ApplicationShortcuts) = "{A3918781-E5F2-4890-B3D9-A7E54332328C}"
+        cids(kfID_AppsFolder) = "{1e87508d-89c2-42f0-8a7e-645a0f50ca58}"
+        cids(kfID_AppUpdates) = "{a305ce99-f527-492b-8b1a-7e76fa98d6e4}"
+        cids(kfID_CameraRoll) = "{AB5FB87B-7CE2-4F83-915D-550846C9537B}"
+        cids(kfID_CameraRollLibrary) = "{2B20DF75-1EDA-4039-8097-38798227D5B7}"
+        cids(kfID_CDBurning) = "{9E52AB10-F80D-49DF-ACB8-4330F5687855}"
+        cids(kfID_ChangeRemovePrograms) = "{df7266ac-9274-4867-8d55-3bd661de872d}"
+        cids(kfID_CommonAdminTools) = "{D0384E7D-BAC3-4797-8F14-CBA229B392B5}"
+        cids(kfID_CommonOEMLinks) = "{C1BAE2D0-10DF-4334-BEDD-7AA20B227A9D}"
+        cids(kfID_CommonPrograms) = "{0139D44E-6AFE-49F2-8690-3DAFCAE6FFB8}"
+        cids(kfID_CommonStartMenu) = "{A4115719-D62E-491D-AA7C-E74B8BE3B067}"
+        cids(kfID_CommonStartMenuPlaces) = "{A440879F-87A0-4F7D-B700-0207B966194A}"
+        cids(kfID_CommonStartup) = "{82A5EA35-D9CD-47C5-9629-E15D2F714E6E}"
+        cids(kfID_CommonTemplates) = "{B94237E7-57AC-4347-9151-B08C6C32D1F7}"
+        cids(kfID_ComputerFolder) = "{0AC0837C-BBF8-452A-850D-79D08E667CA7}"
+        cids(kfID_ConflictFolder) = "{4bfefb45-347d-4006-a5be-ac0cb0567192}"
+        cids(kfID_ConnectionsFolder) = "{6F0CD92B-2E97-45D1-88FF-B0D186B8DEDD}"
+        cids(kfID_Contacts) = "{56784854-C6CB-462b-8169-88E350ACB882}"
+        cids(kfID_ControlPanelFolder) = "{82A74AEB-AEB4-465C-A014-D097EE346D63}"
+        cids(kfID_Cookies) = "{2B0F765D-C0E9-4171-908E-08A611B84FF6}"
+        cids(kfID_CurrentAppMods) = "{3db40b20-2a30-4dbe-917e-771dd21dd099}"
+        cids(kfID_Desktop) = "{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}"
+        cids(kfID_DevelopmentFiles) = "{DBE8E08E-3053-4BBC-B183-2A7B2B191E59}"
+        cids(kfID_Device) = "{1C2AC1DC-4358-4B6C-9733-AF21156576F0}"
+        cids(kfID_DeviceMetadataStore) = "{5CE4A5E9-E4EB-479D-B89F-130C02886155}"
+        cids(kfID_Documents) = "{FDD39AD0-238F-46AF-ADB4-6C85480369C7}"
+        cids(kfID_DocumentsLibrary) = "{7b0db17d-9cd2-4a93-9733-46cc89022e7c}"
+        cids(kfID_Downloads) = "{374DE290-123F-4565-9164-39C4925E467B}"
+        cids(kfID_Favorites) = "{1777F761-68AD-4D8A-87BD-30B759FA33DD}"
+        cids(kfID_Fonts) = "{FD228CB7-AE11-4AE3-864C-16F3910AB8FE}"
+        cids(kfID_Games) = "{CAC52C1A-B53D-4edc-92D7-6B2E8AC19434}"
+        cids(kfID_GameTasks) = "{054FAE61-4DD8-4787-80B6-090220C4B700}"
+        cids(kfID_History) = "{D9DC8A3B-B784-432E-A781-5A1130A75963}"
+        cids(kfID_HomeGroup) = "{52528A6B-B9E3-4add-B60D-588C2DBA842D}"
+        cids(kfID_HomeGroupCurrentUser) = "{9B74B6A3-0DFD-4f11-9E78-5F7800F2E772}"
+        cids(kfID_ImplicitAppShortcuts) = "{bcb5256f-79f6-4cee-b725-dc34e402fd46}"
+        cids(kfID_InternetCache) = "{352481E8-33BE-4251-BA85-6007CAEDCF9D}"
+        cids(kfID_InternetFolder) = "{4D9F7874-4E0C-4904-967B-40B0D20C3E4B}"
+        cids(kfID_Libraries) = "{1B3EA5DC-B587-4786-B4EF-BD1DC332AEAE}"
+        cids(kfID_Links) = "{bfb9d5e0-c6a9-404c-b2b2-ae6db6af4968}"
+        cids(kfID_LocalAppData) = "{F1B32785-6FBA-4FCF-9D55-7B8E7F157091}"
+        cids(kfID_LocalAppDataLow) = "{A520A1A4-1780-4FF6-BD18-167343C5AF16}"
+        cids(kfID_LocalDocuments) = "{f42ee2d3-909f-4907-8871-4c22fc0bf756}"
+        cids(kfID_LocalDownloads) = "{7d83ee9b-2244-4e70-b1f5-5393042af1e4}"
+        cids(kfID_LocalizedResourcesDir) = "{2A00375E-224C-49DE-B8D1-440DF7EF3DDC}"
+        cids(kfID_LocalMusic) = "{a0c69a99-21c8-4671-8703-7934162fcf1d}"
+        cids(kfID_LocalPictures) = "{0ddd015d-b06c-45d5-8c4c-f59713854639}"
+        cids(kfID_LocalStorage) = "{B3EB08D3-A1F3-496B-865A-42B536CDA0EC}"
+        cids(kfID_LocalVideos) = "{35286a68-3c57-41a1-bbb1-0eae73d76c95}"
+        cids(kfID_Music) = "{4BD8D571-6D19-48D3-BE97-422220080E43}"
+        cids(kfID_MusicLibrary) = "{2112AB0A-C86A-4ffe-A368-0DE96E47012E}"
+        cids(kfID_NetHood) = "{C5ABBF53-E17F-4121-8900-86626FC2C973}"
+        cids(kfID_NetworkFolder) = "{D20BEEC4-5CA8-4905-AE3B-BF251EA09B53}"
+        cids(kfID_Objects3D) = "{31C0DD25-9439-4F12-BF41-7FF4EDA38722}"
+        cids(kfID_OneDrive) = "{A52BBA46-E9E1-435f-B3D9-28DAA648C0F6}"
+        cids(kfID_OriginalImages) = "{2C36C0AA-5812-4b87-BFD0-4CD0DFB19B39}"
+        cids(kfID_PhotoAlbums) = "{69D2CF90-FC33-4FB7-9A0C-EBB0F0FCB43C}"
+        cids(kfID_Pictures) = "{33E28130-4E1E-4676-835A-98395C3BC3BB}"
+        cids(kfID_PicturesLibrary) = "{A990AE9F-A03B-4e80-94BC-9912D7504104}"
+        cids(kfID_Playlists) = "{DE92C1C7-837F-4F69-A3BB-86E631204A23}"
+        cids(kfID_PrintersFolder) = "{76FC4E2D-D6AD-4519-A663-37BD56068185}"
+        cids(kfID_PrintHood) = "{9274BD8D-CFD1-41C3-B35E-B13F55A758F4}"
+        cids(kfID_Profile) = "{5E6C858F-0E22-4760-9AFE-EA3317B67173}"
+        cids(kfID_ProgramData) = "{62AB5D82-FDC1-4DC3-A9DD-070D1D495D97}"
+        cids(kfID_ProgramFiles) = "{905e63b6-c1bf-494e-b29c-65b732d3d21a}"
+        cids(kfID_ProgramFilesCommon) = "{F7F1ED05-9F6D-47A2-AAAE-29D317C6F066}"
+        cids(kfID_ProgramFilesCommonX64) = "{6365D5A7-0F0D-45e5-87F6-0DA56B6A4F7D}"
+        cids(kfID_ProgramFilesCommonX86) = "{DE974D24-D9C6-4D3E-BF91-F4455120B917}"
+        cids(kfID_ProgramFilesX64) = "{6D809377-6AF0-444b-8957-A3773F02200E}"
+        cids(kfID_ProgramFilesX86) = "{7C5A40EF-A0FB-4BFC-874A-C0F2E0B9FA8E}"
+        cids(kfID_Programs) = "{A77F5D77-2E2B-44C3-A6A2-ABA601054A51}"
+        cids(kfID_Public) = "{DFDF76A2-C82A-4D63-906A-5644AC457385}"
+        cids(kfID_PublicDesktop) = "{C4AA340D-F20F-4863-AFEF-F87EF2E6BA25}"
+        cids(kfID_PublicDocuments) = "{ED4824AF-DCE4-45A8-81E2-FC7965083634}"
+        cids(kfID_PublicDownloads) = "{3D644C9B-1FB8-4f30-9B45-F670235F79C0}"
+        cids(kfID_PublicGameTasks) = "{DEBF2536-E1A8-4c59-B6A2-414586476AEA}"
+        cids(kfID_PublicLibraries) = "{48daf80b-e6cf-4f4e-b800-0e69d84ee384}"
+        cids(kfID_PublicMusic) = "{3214FAB5-9757-4298-BB61-92A9DEAA44FF}"
+        cids(kfID_PublicPictures) = "{B6EBFB86-6907-413C-9AF7-4FC2ABF07CC5}"
+        cids(kfID_PublicRingtones) = "{E555AB60-153B-4D17-9F04-A5FE99FC15EC}"
+        cids(kfID_PublicUserTiles) = "{0482af6c-08f1-4c34-8c90-e17ec98b1e17}"
+        cids(kfID_PublicVideos) = "{2400183A-6185-49FB-A2D8-4A392A602BA3}"
+        cids(kfID_QuickLaunch) = "{52a4f021-7b75-48a9-9f6b-4b87a210bc8f}"
+        cids(kfID_Recent) = "{AE50C081-EBD2-438A-8655-8A092E34987A}"
+        cids(kfID_RecordedCalls) = "{2f8b40c2-83ed-48ee-b383-a1f157ec6f9a}"
+        cids(kfID_RecordedTVLibrary) = "{1A6FDBA2-F42D-4358-A798-B74D745926C5}"
+        cids(kfID_RecycleBinFolder) = "{B7534046-3ECB-4C18-BE4E-64CD4CB7D6AC}"
+        cids(kfID_ResourceDir) = "{8AD10C31-2ADB-4296-A8F7-E4701232C972}"
+        cids(kfID_RetailDemo) = "{12D4C69E-24AD-4923-BE19-31321C43A767}"
+        cids(kfID_Ringtones) = "{C870044B-F49E-4126-A9C3-B52A1FF411E8}"
+        cids(kfID_RoamedTileImages) = "{AAA8D5A5-F1D6-4259-BAA8-78E7EF60835E}"
+        cids(kfID_RoamingAppData) = "{3EB685DB-65F9-4CF6-A03A-E3EF65729F3D}"
+        cids(kfID_RoamingTiles) = "{00BCFC5A-ED94-4e48-96A1-3F6217F21990}"
+        cids(kfID_SampleMusic) = "{B250C668-F57D-4EE1-A63C-290EE7D1AA1F}"
+        cids(kfID_SamplePictures) = "{C4900540-2379-4C75-844B-64E6FAF8716B}"
+        cids(kfID_SamplePlaylists) = "{15CA69B3-30EE-49C1-ACE1-6B5EC372AFB5}"
+        cids(kfID_SampleVideos) = "{859EAD94-2E85-48AD-A71A-0969CB56A6CD}"
+        cids(kfID_SavedGames) = "{4C5C32FF-BB9D-43b0-B5B4-2D72E54EAAA4}"
+        cids(kfID_SavedPictures) = "{3B193882-D3AD-4eab-965A-69829D1FB59F}"
+        cids(kfID_SavedPicturesLibrary) = "{E25B5812-BE88-4bd9-94B0-29233477B6C3}"
+        cids(kfID_SavedSearches) = "{7d1d3a04-debb-4115-95cf-2f29da2920da}"
+        cids(kfID_Screenshots) = "{b7bede81-df94-4682-a7d8-57a52620b86f}"
+        cids(kfID_SEARCH_CSC) = "{ee32e446-31ca-4aba-814f-a5ebd2fd6d5e}"
+        cids(kfID_SEARCH_MAPI) = "{98ec0e18-2098-4d44-8644-66979315a281}"
+        cids(kfID_SearchHistory) = "{0D4C3DB6-03A3-462F-A0E6-08924C41B5D4}"
+        cids(kfID_SearchHome) = "{190337d1-b8ca-4121-a639-6d472d16972a}"
+        cids(kfID_SearchTemplates) = "{7E636BFE-DFA9-4D5E-B456-D7B39851D8A9}"
+        cids(kfID_SendTo) = "{8983036C-27C0-404B-8F08-102D10DCFD74}"
+        cids(kfID_SidebarDefaultParts) = "{7B396E54-9EC5-4300-BE0A-2482EBAE1A26}"
+        cids(kfID_SidebarParts) = "{A75D362E-50FC-4fb7-AC2C-A8BEAA314493}"
+        cids(kfID_SkyDrive) = "{A52BBA46-E9E1-435f-B3D9-28DAA648C0F6}"
+        cids(kfID_SkyDriveCameraRoll) = "{767E6811-49CB-4273-87C2-20F355E1085B}"
+        cids(kfID_SkyDriveDocuments) = "{24D89E24-2F19-4534-9DDE-6A6671FBB8FE}"
+        cids(kfID_SkyDriveMusic) = "{C3F2459E-80D6-45DC-BFEF-1F769F2BE730}"
+        cids(kfID_SkyDrivePictures) = "{339719B5-8C47-4894-94C2-D8F77ADD44A6}"
+        cids(kfID_StartMenu) = "{625B53C3-AB48-4EC1-BA1F-A1EF4146FC19}"
+        cids(kfID_StartMenuAllPrograms) = "{F26305EF-6948-40B9-B255-81453D09C785}"
+        cids(kfID_Startup) = "{B97D20BB-F46A-4C97-BA10-5E3608430854}"
+        cids(kfID_SyncManagerFolder) = "{43668BF8-C14E-49B2-97C9-747784D784B7}"
+        cids(kfID_SyncResultsFolder) = "{289a9a43-be44-4057-a41b-587a76d7e7f9}"
+        cids(kfID_SyncSetupFolder) = "{0F214138-B1D3-4a90-BBA9-27CBC0C5389A}"
+        cids(kfID_System) = "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}"
+        cids(kfID_SystemX86) = "{D65231B0-B2F1-4857-A4CE-A8E7C6EA7D27}"
+        cids(kfID_Templates) = "{A63293E8-664E-48DB-A079-DF759E0509F7}"
+        cids(kfID_UserPinned) = "{9e3995ab-1f9c-4f13-b827-48b24b6c7174}"
+        cids(kfID_UserProfiles) = "{0762D272-C50A-4BB0-A382-697DCD729B80}"
+        cids(kfID_UserProgramFiles) = "{5cd7aee2-2219-4a67-b85d-6c9ce15660cb}"
+        cids(kfID_UserProgramFilesCommon) = "{bcbd3057-ca5c-4622-b42d-bc56db0ae516}"
+        cids(kfID_UsersFiles) = "{f3ce0f7c-4901-4acc-8648-d5d44b04ef8f}"
+        cids(kfID_UsersLibraries) = "{A302545D-DEFF-464b-ABE8-61C8648D939B}"
+        cids(kfID_Videos) = "{18989B1D-99B5-455B-841C-AB7C74E4DDFC}"
+        cids(kfID_VideosLibrary) = "{491E922F-5643-4af4-A7EB-4E7A138D8174}"
+        cids(kfID_Windows) = "{F38BF404-1D43-42F2-9305-67DE0B28FC23}"
+    End If
+    GetKnownFolderCLSID = cids(kfID)
+End Function
+#End If
+
+'*******************************************************************************
+'Returns the path of a 'known folder' on Windows
 'If 'createIfMissing' is set to True, the windows API function will be called
 '   with flags 'KF_FLAG_CREATE' and 'KF_FLAG_INIT' and will create the folder
 '   if it does not currently exist on the system.
 'The function can raise the following errors:
-'   -   5: (Invalid procedure call) if 'knownFolderID' is not a valid CLSID
+'   -   5: (Invalid procedure call) if 'kfID' is not valid
 '   -  76: (Path not found) if 'createIfMissing' = False AND path not found
 '   -  75: (Path/File access error) if path not found because either:
-'          * the specified FOLDERID is for a known virtual folder
+'          * the specified folder ID is for a known virtual folder
 '          * there are insufficient permissions to create the folder
 '   - 336: (Component not correctly registered) if the path, or the known
-'          FOLDERID itself are not registered in the windows registry
+'          folder ID itself are not registered in the windows registry
 '   -  51: (Internal error) if an unexpected error occurs
 '*******************************************************************************
 #If Windows Then
-Public Function GetKnownFolderWin(ByRef knownFolderID As String, _
-                         Optional ByVal createIfMissing As Boolean = False) As String
-    Const methodName As String = "GetKnownFolderWin"
+Public Function GetKnownFolderPath(ByVal kfID As KnownFolderID _
+                                 , Optional ByVal createIfMissing As Boolean = False) As String
+    Const methodName As String = "GetKnownFolderPath"
     Const NOERROR As Long = 0
-    Dim rfID As GUID
+    Static guids([_minKfID] To [_maxKfID]) As GUID
     '
-    If CLSIDFromString(StrPtr(knownFolderID), rfID) <> NOERROR Then
-        Err.Raise vbErrInvalidProcedureCall, methodName, "Invalid CLSID"
+    If kfID < [_minKfID] Or kfID > [_maxKfID] Then
+        Err.Raise vbErrInvalidProcedureCall, methodName, "Invalid Folder ID"
+    ElseIf guids(kfID).data1 = 0 Then
+        If CLSIDFromString(StrPtr(GetKnownFolderCLSID(kfID)), guids(kfID)) <> NOERROR Then
+            Err.Raise vbErrInvalidProcedureCall, methodName, "Invalid CLSID"
+        End If
     End If
     '
     Const KF_FLAG_CREATE As Long = &H8000&  'Other flags not relevant
@@ -1252,11 +1584,11 @@ Public Function GetKnownFolderWin(ByRef knownFolderID As String, _
     '
     Const S_OK As Long = 0
     Dim ppszPath As LongPtr
-    Dim hRes As Long: hRes = SHGetKnownFolderPath(rfID, dwFlags, 0, ppszPath)
+    Dim hRes As Long: hRes = SHGetKnownFolderPath(guids(kfID), dwFlags, 0, ppszPath)
     '
     If hRes = S_OK Then
-        GetKnownFolderWin = Space$(lstrlenW(ppszPath))
-        CopyMemory StrPtr(GetKnownFolderWin), ppszPath, LenB(GetKnownFolderWin)
+        GetKnownFolderPath = Space$(lstrlenW(ppszPath))
+        CopyMemory StrPtr(GetKnownFolderPath), ppszPath, LenB(GetKnownFolderPath)
     End If
     CoTaskMemFree ppszPath 'Memory must be freed, even on fail
     If hRes = S_OK Then Exit Function
@@ -1339,8 +1671,8 @@ Private Sub AddFoldersTo(ByVal collTarget As Collection _
         Const maxDirLen As Long = 247
     #End If
     Const errBadFileNameOrNumber As Long = 52
-    Const currentFolder As String = "."
-    Const parentFolder As String = ".."
+    Const currentDir As String = "."
+    Const parentDir As String = ".."
     Dim folderName As String
     Dim fullPath As String
     Dim collFolders As Collection
@@ -1361,7 +1693,7 @@ Private Sub AddFoldersTo(ByVal collTarget As Collection _
     On Error GoTo 0
     '
     Do While LenB(folderName) > 0
-        If folderName <> currentFolder And folderName <> parentFolder Then
+        If folderName <> currentDir And folderName <> parentDir Then
             collTemp.Add folderName
             If InStr(1, folderName, "?") > 0 Then 'Unsupported Unicode
                 Set collTemp = New Collection
@@ -1379,9 +1711,11 @@ Private Sub AddFoldersTo(ByVal collTarget As Collection _
             Dim fsoFolder As Object: Set fsoFolder = GetFSOFolder(fixedPath)
             '
             If Not fsoFolder Is Nothing Then
+                On Error Resume Next
                 For Each fsoDir In fsoFolder.SubFolders
                     collFolders.Add fixedPath & fsoDir.Name
                 Next fsoDir
+                On Error GoTo 0
             End If
         #End If
     End If
@@ -1403,6 +1737,11 @@ End Sub
 'Returns the local drive path for a given path or null string if path not local
 'Note that the input path does not need to be an existing file/folder
 'Works with both UNC paths (Win) and OneDrive/SharePoint synchronized paths
+'
+'Important!
+'The expectation is that 'fullPath' is NOT URL encoded. If you have an encoded
+'   path (e.g. in Word, ActiveDocument.Path returns an encoded URL) then use
+'   GetLocalPath(DecodeURL(fullPath)...
 '*******************************************************************************
 Public Function GetLocalPath(ByRef fullPath As String _
                            , Optional ByVal rebuildCache As Boolean = False _
@@ -1462,6 +1801,7 @@ Public Function GetRelativePath(ByRef fullPath As String _
     Do
         prevPos = currPos
         currPos = InStr(currPos + 1, fPath, ps)
+        If currPos <> InStr(prevPos + 1, rPath, ps) Then Exit Do
         diff = currPos - prevPos - 1
         If diff > 0 Then
             fParent = Mid$(fPath, prevPos + 1, diff)
@@ -1509,10 +1849,91 @@ Public Function GetRemotePath(ByRef fullPath As String _
     End If
 End Function
 
-#If Mac Then
 '*******************************************************************************
-'Gets path of a 'special folder' using the respective 'folder constant' on Mac
-'Use prefixed constants 'SFC_' and 'DOMAIN_' for the first 2 arguments
+'Source: https://developer.apple.com/library/archive/documentation/AppleScript/Conceptual/AppleScriptLangGuide/reference/ASLR_cmds.html
+'Returns a special folder constant on Mac based on the corresponding enum value
+'*******************************************************************************
+#If Mac Then
+Public Function GetSpecialFolderConstant(ByVal sfc As SpecialFolderConstant) As String
+    Static sfcs([_minSFC] To [_maxSFC]) As String
+    '
+    If sfc < [_minSFC] Or sfc > [_maxSFC] Then Exit Function
+    If LenB(sfcs([_minSFC])) = 0 Then
+        sfcs(SFC_ApplicationSupport) = "application support"
+        sfcs(SFC_ApplicationsFolder) = "applications folder"
+        sfcs(SFC_Desktop) = "desktop"
+        sfcs(SFC_DesktopPicturesFolder) = "desktop pictures folder"
+        sfcs(SFC_DocumentsFolder) = "documents folder"
+        sfcs(SFC_DownloadsFolder) = "downloads folder"
+        sfcs(SFC_FavoritesFolder) = "favorites folder"
+        sfcs(SFC_FolderActionScripts) = "Folder Action scripts"
+        sfcs(SFC_Fonts) = "fonts"
+        sfcs(SFC_Help) = "help"
+        sfcs(SFC_HomeFolder) = "home folder"
+        sfcs(SFC_InternetPlugins) = "internet plugins"
+        sfcs(SFC_KeychainFolder) = "keychain folder"
+        sfcs(SFC_LibraryFolder) = "library folder"
+        sfcs(SFC_ModemScripts) = "modem scripts"
+        sfcs(SFC_MoviesFolder) = "movies folder"
+        sfcs(SFC_MusicFolder) = "music folder"
+        sfcs(SFC_PicturesFolder) = "pictures folder"
+        sfcs(SFC_Preferences) = "preferences"
+        sfcs(SFC_PrinterDescriptions) = "printer descriptions"
+        sfcs(SFC_PublicFolder) = "public folder"
+        sfcs(SFC_ScriptingAdditions) = "scripting additions"
+        sfcs(SFC_ScriptsFolder) = "scripts folder"
+        sfcs(SFC_ServicesFolder) = "services folder"
+        sfcs(SFC_SharedDocuments) = "shared documents"
+        sfcs(SFC_SharedLibraries) = "shared libraries"
+        sfcs(SFC_SitesFolder) = "sites folder"
+        sfcs(SFC_StartupDisk) = "startup disk"
+        sfcs(SFC_StartupItems) = "startup items"
+        sfcs(SFC_SystemFolder) = "system folder"
+        sfcs(SFC_SystemPreferences) = "system preferences"
+        sfcs(SFC_TemporaryItems) = "temporary items"
+        sfcs(SFC_Trash) = "trash"
+        sfcs(SFC_UsersFolder) = "users folder"
+        sfcs(SFC_UtilitiesFolder) = "utilities folder"
+        sfcs(SFC_WorkflowsFolder) = "workflows folder"
+        '
+        'Classic domain only
+        sfcs(SFC_AppleMenu) = "apple menu"
+        sfcs(SFC_ControlPanels) = "control panels"
+        sfcs(SFC_ControlStripModules) = "control strip modules"
+        sfcs(SFC_Extensions) = "extensions"
+        sfcs(SFC_LauncherItemsFolder) = "launcher items folder"
+        sfcs(SFC_PrinterDrivers) = "printer drivers"
+        sfcs(SFC_Printmonitor) = "printmonitor"
+        sfcs(SFC_ShutdownFolder) = "shutdown folder"
+        sfcs(SFC_SpeakableItems) = "speakable items"
+        sfcs(SFC_Stationery) = "stationery"
+        sfcs(SFC_Voices) = "voices"
+    End If
+    GetSpecialFolderConstant = sfcs(sfc)
+End Function
+#End If
+
+'*******************************************************************************
+'Returns a special folder domain on Mac based on the corresponding enum value
+'*******************************************************************************
+#If Mac Then
+Public Function GetSpecialFolderDomain(ByVal sfd As SpecialFolderDomain) As String
+    Static sfds([_minSFD] To [_maxSFD]) As String
+    '
+    If sfd < [_minSFD] Or sfd > [_maxSFD] Then Exit Function
+    If LenB(sfds([_maxSFD])) = 0 Then
+        sfds(sfd_System) = "system"
+        sfds(sfd_Local) = "local"
+        sfds(sfd_Network) = "network"
+        sfds(sfd_User) = "user"
+        sfds(sfd_Classic) = "classic"
+    End If
+    GetSpecialFolderDomain = sfds(sfd)
+End Function
+#End If
+
+'*******************************************************************************
+'Returns the path of a 'special folder' on Mac
 'If 'createIfMissing' is set to True, the function will try to create the folder
 '   if it does not currently exist on the system. Note that this argument
 '   ignores the 'forceNonSandboxedPath' option, and it can happen that the
@@ -1520,26 +1941,25 @@ End Function
 '   sandboxed path. This behavior can not be avoided without creating access
 '   requests, therefore it should be taken into account by the user
 'The function can raise the following errors:
-'   -  5: (Invalid procedure call) if 'domainName' is invalid
+'   -  5: (Invalid procedure call) if 'sfc' or 'sfd' is invalid
 '   - 76: (Path not found) if 'createIfMissing' = False AND path not found
 '   - 75: (Path/File access error) if 'createIfMissing'= True AND path not found
 '*******************************************************************************
-Public Function GetSpecialFolderMac(ByRef specialFolderConstant As String _
-                                  , Optional ByRef domainName As String = vbNullString _
-                                  , Optional ByVal forceNonSandboxedPath As Boolean = True _
-                                  , Optional ByVal createIfMissing As Boolean = False) As String
-    Const methodName As String = "GetSpecialFolderMac"
+#If Mac Then
+Public Function GetSpecialFolderPath(ByVal sfc As SpecialFolderConstant _
+                                   , Optional ByVal sfd As SpecialFolderDomain = [_sfdNone] _
+                                   , Optional ByVal forceNonSandboxedPath As Boolean = True _
+                                   , Optional ByVal createIfMissing As Boolean = False) As String
+    Const methodName As String = "GetSpecialFolderPath"
     '
-    Select Case LCase$(domainName)
-    Case "system", "local", "network", "user", "classic", vbNullString
-    Case Else
-        Err.Raise vbErrInvalidProcedureCall, methodName, "Invalid domain name" _
-                & ". Expected one of: system, local, network, user, classic"
-    End Select
+    If sfc < [_minSFC] Or sfc > [_maxSFC] _
+    Or sfd < [_minSFD] Or sfd > [_maxSFD] Then
+        Err.Raise vbErrInvalidProcedureCall, methodName, "Invalid constant/domain"
+    End If
     '
-    Dim cmd As String: cmd = specialFolderConstant
+    Dim cmd As String: cmd = GetSpecialFolderConstant(sfc)
     '
-    If LenB(domainName) > 0 Then cmd = cmd & " from " & domainName & " domain"
+    If sfd <> [_sfdNone] Then cmd = cmd & " from " & GetSpecialFolderDomain(sfd) & " domain"
     cmd = cmd & IIf(createIfMissing, " with", " without") & " folder creation"
     cmd = "return POSIX path of (path to " & cmd & ") as string"
     '
@@ -1554,17 +1974,17 @@ Public Function GetSpecialFolderMac(ByRef specialFolderConstant As String _
     End If
     '
     On Error GoTo PathDoesNotExist
-    GetSpecialFolderMac = MacScript(cmd)
+    GetSpecialFolderPath = MacScript(cmd)
     On Error GoTo 0
     '
     If forceNonSandboxedPath Then
         Dim sboxPath As String:    sboxPath = Environ$("HOME")
         Dim i As Long:             i = InStrRev(sboxPath, "/Library/Containers/")
         Dim sboxRelPath As String: If i > 0 Then sboxRelPath = Mid$(sboxPath, i)
-        GetSpecialFolderMac = Replace(GetSpecialFolderMac, sboxRelPath _
-                                    , vbNullString, , 1, vbTextCompare)
+        GetSpecialFolderPath = Replace(GetSpecialFolderPath, sboxRelPath _
+                                     , vbNullString, , 1, vbTextCompare)
     End If
-    If LenB(GetSpecialFolderMac) > 0 Then Exit Function
+    If LenB(GetSpecialFolderPath) > 0 Then Exit Function
 PathDoesNotExist:
     Const errMsg As String = "Not available or needs specific domain"
     If createIfMissing Then
@@ -1660,6 +2080,61 @@ Private Function AlignDriveNameIfNeeded(ByRef driveName As String _
 End Function
 #End If
 
+Public Function DecodeURL(ByRef odWebPath As String) As String
+    Static nibbleMap(0 To 255) As Long 'Nibble: 0 to F. Byte: 00 to FF
+    Static charMap(0 To 255) As String
+    Dim i As Long
+    '
+    If nibbleMap(0) = 0 Then
+        For i = 0 To 255
+            nibbleMap(i) = -256 'To force invalid character code
+            charMap(i) = ChrW$(i)
+        Next i
+        For i = 0 To 9
+            nibbleMap(Asc(CStr(i))) = i
+        Next i
+        For i = 10 To 15
+            nibbleMap(i + 55) = i 'Asc("A") to Asc("F")
+            nibbleMap(i + 87) = i 'Asc("a") to Asc("f")
+        Next i
+    End If
+    '
+    DecodeURL = odWebPath 'Buffer
+    '
+    Dim b() As Byte:     b = odWebPath
+    Dim pathLen As Long: pathLen = Len(odWebPath)
+    Dim maxFind As Long: maxFind = pathLen * 2 - 4
+    Dim codeW As Integer
+    Dim j As Long
+    Dim diff As Long
+    Dim chunkLen As Long
+    '
+    i = InStrB(1, odWebPath, "%")
+    Do While i > 0 And i < maxFind
+        codeW = nibbleMap(b(i + 1)) * &H10& + nibbleMap(b(i + 3))
+        If codeW > 0 And b(i + 2) = 0 And b(i + 4) = 0 Then
+            If j > 0 Then
+                chunkLen = i - j
+                If chunkLen > 0 Then
+                    MidB$(DecodeURL, j - diff) = MidB$(odWebPath, j, chunkLen)
+                End If
+            End If
+            MidB$(DecodeURL, i - diff) = charMap(codeW)
+            i = i + 4
+            j = i + 2
+            diff = diff + 4
+        End If
+        i = InStrB(i + 2, odWebPath, "%")
+    Loop
+    If diff > 0 Then
+        chunkLen = pathLen * 2 + 1 - j
+        If chunkLen > 0 Then
+            MidB$(DecodeURL, j - diff) = MidB$(odWebPath, j, chunkLen)
+        End If
+        DecodeURL = Left$(DecodeURL, pathLen - diff / 2)
+    End If
+End Function
+
 '*******************************************************************************
 'Returns the local path for a OneDrive web path
 'Returns null string if the path provided is not a valid OneDrive web path
@@ -1667,7 +2142,7 @@ End Function
 'With the help of: @guwidoe (https://github.com/guwidoe)
 'See: https://github.com/cristianbuse/VBA-FileTools/issues/1
 '*******************************************************************************
-Private Function GetOneDriveLocalPath(ByRef odWebPath As String _
+Private Function GetOneDriveLocalPath(ByVal odWebPath As String _
                                     , ByVal rebuildCache As Boolean) As String
     If InStr(1, odWebPath, "https://", vbTextCompare) <> 1 Then Exit Function
     '
@@ -1676,15 +2151,15 @@ Private Function GetOneDriveLocalPath(ByRef odWebPath As String _
     Dim mainIndex As Long
     Dim i As Long
     '
-    If rebuildCache Or Not m_providers.isSet Then ReadODProviders
+    ReadODProviders rebuildCache
     For i = 1 To m_providers.pCount
-        With m_providers.arr(i)
-            If StrCompLeft(odWebPath, .webPath, vbTextCompare) = 0 Then
-                collMatches.Add i
-                If Not .isBusiness Then Exit For
-                If .isMain Then mainIndex = .accountIndex
+        If StrCompLeft(odWebPath, m_providers.arr(i).webPath, vbTextCompare) = 0 Then
+            collMatches.Add i
+            If Not m_providers.arr(i).isBusiness Then Exit For
+            If m_providers.arr(i).isMain Then
+                mainIndex = m_providers.arr(i).accountIndex
             End If
-        End With
+        End If
     Next i
     '
     Select Case collMatches.Count
@@ -1762,7 +2237,7 @@ Private Function GetOneDriveWebPath(ByRef odLocalPath As String _
     Dim i As Long
     Dim fixedPath As String: fixedPath = FixPathSeparators(odLocalPath)
     '
-    If rebuildCache Or Not m_providers.isSet Then ReadODProviders
+    ReadODProviders rebuildCache
     For i = 1 To m_providers.pCount
         localPath = m_providers.arr(i).mountPoint
         If StrCompLeft(fixedPath, localPath, vbTextCompare) = 0 Then
@@ -1786,9 +2261,30 @@ End Function
 'Populates the OneDrive providers in the 'm_providers' structure
 'Utility for 'GetOneDriveLocalPath' and 'GetOneDriveWebPath'
 '*******************************************************************************
-Private Sub ReadODProviders()
+Private Sub ReadODProviders(ByVal rebuildCache As Boolean)
     Dim i As Long
     Dim accountsInfo As ONEDRIVE_ACCOUNTS_INFO
+    Dim fileName As String
+    Static collTrackedFiles As Collection
+    Const oneSecond As Date = 1 / 86400
+    '
+    If Not rebuildCache And m_providers.isSet Then
+        If m_providers.lastCacheUpdate + oneSecond > Now() Then Exit Sub
+        Dim v As Variant
+        On Error Resume Next
+        For Each v In collTrackedFiles
+            If FileDateTime(v) > m_providers.lastCacheUpdate _
+            Or Err.Number <> 0 Then
+                rebuildCache = True
+                Exit For
+            End If
+        Next v
+        On Error GoTo 0
+        If Not rebuildCache Then
+            m_providers.lastCacheUpdate = Now()
+            Exit Sub
+        End If
+    End If
     '
     m_providers.pCount = 0
     m_providers.isSet = False
@@ -1798,20 +2294,21 @@ Private Sub ReadODProviders()
     '
     #If Mac Then 'Grant access to all needed files/folders, in batch
         Dim collFiles As New Collection
-        Dim FileName As String
         '
         For i = 1 To accountsInfo.pCount
             With accountsInfo.arr(i)
                 collFiles.Add .iniPath
                 collFiles.Add .datPath
+                collFiles.Add .dbPath
                 collFiles.Add .clientPath
+                collFiles.Add .globalPath
                 If .isPersonal Then
                     collFiles.Add .groupPath
                 Else
-                    FileName = Dir(Replace(.clientPath, ".ini", "_*.ini"))
-                    Do While LenB(FileName) > 0
-                        collFiles.Add .folderPath & "/" & FileName
-                        FileName = Dir
+                    fileName = Dir(Replace(.clientPath, ".ini", "_*.ini"))
+                    Do While LenB(fileName) > 0
+                        collFiles.Add .folderPath & "/" & fileName
+                        fileName = Dir
                     Loop
                 End If
             End With
@@ -1838,12 +2335,12 @@ Private Sub ReadODProviders()
             If LenB(syncID) > 0 Then
                 collSyncIDToDir.Add odCloudDir, syncID
             Else
-                FileName = Dir(odCloudDir & "/", vbDirectory)
-                Do While LenB(FileName) > 0
-                    folderPath = odCloudDir & "/" & FileName
+                fileName = Dir(odCloudDir & "/", vbDirectory)
+                Do While LenB(fileName) > 0
+                    folderPath = odCloudDir & "/" & fileName
                     collFiles.Add folderPath
                     collFiles.Add folderPath & "/" & syncIDFileName
-                    FileName = Dir
+                    fileName = Dir
                 Loop
             End If
         Next odCloudDir
@@ -1863,26 +2360,46 @@ Private Sub ReadODProviders()
             ValidateAccounts accountsInfo.arr(i), accountsInfo.arr(j)
         Next j
     Next i
+    Set collTrackedFiles = New Collection
     For i = 1 To accountsInfo.pCount
-        If accountsInfo.arr(i).isValid Then
-            If accountsInfo.arr(i).isPersonal Then
-                AddPersonalProviders accountsInfo.arr(i)
-            Else
-                AddBusinessProviders accountsInfo.arr(i)
+        With accountsInfo.arr(i)
+            If .isValid Then
+                If .isPersonal Then
+                    AddPersonalProviders accountsInfo.arr(i)
+                    collTrackedFiles.Add .groupPath
+                Else
+                    AddBusinessProviders accountsInfo.arr(i)
+                    fileName = Dir(Replace(.clientPath, ".ini", "_*.ini"))
+                    Do While LenB(fileName) > 0
+                        collTrackedFiles.Add .folderPath & "/" & fileName
+                        fileName = Dir
+                    Loop
+                End If
+                If .hasDatFile Then
+                    collTrackedFiles.Add .datPath
+                Else
+                    collTrackedFiles.Add .dbPath
+                End If
+                collTrackedFiles.Add .clientPath
+                collTrackedFiles.Add .globalPath
+                collTrackedFiles.Add .iniPath
             End If
-        End If
+        End With
     Next i
     #If Mac Then
         If collSyncIDToDir.Count > 0 Then 'Replace sandbox paths
             For i = 1 To m_providers.pCount
                 With m_providers.arr(i)
-                    Dim syncDir As String: syncDir = collSyncIDToDir(.syncID)
-                    .mountPoint = Replace(.mountPoint, .baseMount, syncDir)
+                    On Error Resume Next
+                    .syncDir = collSyncIDToDir(.syncID)
+                    .mountPoint = Replace(.mountPoint, .baseMount, .syncDir)
+                    On Error GoTo 0
                 End With
             Next i
         End If
     #End If
     m_providers.isSet = True
+    m_providers.lastCacheUpdate = Now()
 #If Mac Then
     ClearConversionDescriptors
 #End If
@@ -1940,10 +2457,10 @@ Private Sub ValidateAccounts(ByRef a1 As ONEDRIVE_ACCOUNT_INFO _
     If a1.accountName <> a2.accountName Then Exit Sub
     If Not (a1.isValid And a2.isValid) Then Exit Sub
     '
-    If a1.datDateTime = 0 Then a1.datDateTime = FileDateTime(a1.datPath)
-    If a2.datDateTime = 0 Then a2.datDateTime = FileDateTime(a2.datPath)
+    If a1.iniDateTime = 0 Then a1.iniDateTime = FileDateTime(a1.iniPath)
+    If a2.iniDateTime = 0 Then a2.iniDateTime = FileDateTime(a2.iniPath)
     '
-    a1.isValid = (a1.datDateTime > a2.datDateTime)
+    a1.isValid = (a1.iniDateTime > a2.iniDateTime)
     a2.isValid = Not a1.isValid
 End Sub
 
@@ -1951,13 +2468,10 @@ End Sub
 'Utility for reading folder information for all the OneDrive accounts
 '*******************************************************************************
 Private Sub ReadODAccountsInfo(ByRef accountsInfo As ONEDRIVE_ACCOUNTS_INFO)
-    Const businessMask As String = "????????-????-????-????-????????????"
-    Const personalMask As String = "????????????????"
     Const ps As String = PATH_SEPARATOR
     Dim folderPath As Variant
     Dim i As Long
-    Dim mask As String
-    Dim datName As String
+    Dim hasIniFile As Boolean
     Dim collFolders As Collection: Set collFolders = GetODAccountDirs()
     '
     accountsInfo.pCount = 0
@@ -1972,24 +2486,28 @@ Private Sub ReadODAccountsInfo(ByRef accountsInfo As ONEDRIVE_ACCOUNTS_INFO)
             .folderPath = folderPath
             .accountName = Mid$(folderPath, InStrRev(folderPath, ps) + 1)
             .isPersonal = (.accountName = "Personal")
-            If .isPersonal Then
-                mask = personalMask
-            Else
-                mask = businessMask
+            If Not .isPersonal Then
                 .accountIndex = CLng(Right$(.accountName, 1))
             End If
-            datName = Dir(BuildPath(.folderPath, mask & ".dat"))
-            If LenB(datName) > 0 Then
-                .cID = Left$(datName, Len(datName) - 4)
-                .datPath = .folderPath & ps & datName
+            .globalPath = .folderPath & ps & "global.ini"
+            .cID = GetTagValue(GetIniText(.globalPath), "cid = ")
+            .iniPath = .folderPath & ps & .cID & ".ini"
+            #If Mac Then 'Avoid Mac File Access Request
+                hasIniFile = (Dir(.iniPath & "*") = .cID & ".ini")
+            #Else
+                hasIniFile = IsFile(.iniPath)
+            #End If
+            If hasIniFile Then
+                .datPath = .folderPath & ps & .cID & ".dat"
+                .dbPath = .folderPath & ps & "SyncEngineDatabase.db"
                 .groupPath = .folderPath & ps & "GroupFolders.ini"
-                .iniPath = .folderPath & ps & .cID & ".ini"
                 .clientPath = .folderPath & ps & "ClientPolicy.ini"
                 #If Mac Then 'Avoid Mac File Access Request
-                    .isValid = (Dir(.iniPath & "*") = .cID & ".ini")
+                    .hasDatFile = (Dir(.datPath & "*") = .cID & ".dat")
                 #Else
-                    .isValid = IsFile(.iniPath)
+                    .hasDatFile = IsFile(.datPath)
                 #End If
+                .isValid = True
             End If
             If Not .isValid Then i = i - 1
         End With
@@ -2074,82 +2592,139 @@ End Function
 'Adds all providers for a Business OneDrive account
 '*******************************************************************************
 Private Sub AddBusinessProviders(ByRef aInfo As ONEDRIVE_ACCOUNT_INFO)
-    Dim bytes() As Byte:   ReadBytes aInfo.iniPath, bytes
-    Dim iniText As String: iniText = bytes
+    Dim iniText As String
     Dim lineText As Variant
-    Dim temp() As String
     Dim tempMount As String
     Dim mainMount As String
     Dim syncID As String
     Dim mainSyncID As String
     Dim tempURL As String
     Dim cSignature As String
-    Dim cFolders As Collection
+    Dim oDirs As DirsInfo
     Dim cParents As Collection
     Dim cPending As New Collection
     Dim canAdd As Boolean
+    Dim collTags As New Collection
+    Dim arrTags() As Variant
+    Dim vTag As Variant
+    Dim tempColl As Collection
+    Dim collSortedLines As New Collection
+    Dim i As Long, j As Long
+    Dim targetCount As Long
+    Dim tempNamespace As String
+    Dim collUrlNamespace As Collection
     '
-    #If Mac Then
-        iniText = ConvertText(iniText, codeUTF16LE, codeUTF8, True)
-    #End If
+    iniText = GetIniText(aInfo.iniPath)
+    arrTags = Array("libraryScope", "libraryFolder", "AddedScope")
+    For Each vTag In arrTags
+        collTags.Add New Collection, vTag
+    Next vTag
     For Each lineText In Split(iniText, vbNewLine)
-        Dim parts() As String: parts = Split(lineText, """")
-        Select Case Left$(lineText, InStr(1, lineText, " "))
-        Case "libraryScope "
-            tempMount = parts(9)
-            syncID = Split(parts(10), " ")(2)
+        i = InStr(1, lineText, " = ", vbBinaryCompare)
+        If i > 0 Then
+            vTag = Left$(lineText, i - 1)
+            Select Case vTag
+            Case arrTags(0), arrTags(1), arrTags(2)
+                i = i + 3
+                j = InStr(i, lineText, " ", vbBinaryCompare)
+                collTags(vTag).Add lineText, Mid$(lineText, i, j - i)
+            End Select
+        End If
+    Next lineText
+    On Error Resume Next
+    For Each tempColl In collTags
+        i = 0
+        targetCount = collSortedLines.Count + tempColl.Count
+        Do
+            collSortedLines.Add tempColl(CStr(i))
+            i = i + 1
+        Loop Until collSortedLines.Count = targetCount
+    Next tempColl
+    On Error GoTo 0
+    For Each lineText In collSortedLines
+        Dim parts() As String: parts = SplitIniLine(lineText)
+        Select Case parts(0)
+        Case "libraryScope"
+            tempMount = parts(14)
+            syncID = parts(16)
             canAdd = (LenB(tempMount) > 0)
-            If parts(3) = "ODB" Then
+            If parts(2) = "0" Then
                 mainMount = tempMount
                 mainSyncID = syncID
                 tempURL = GetUrlNamespace(aInfo.clientPath)
             Else
-                temp = Split(parts(8), " ")
-                cSignature = "_" & temp(3) & temp(1)
+                cSignature = "_" & parts(12) & parts(10)
                 tempURL = GetUrlNamespace(aInfo.clientPath, cSignature)
+                If LenB(tempURL) = 0 Then
+                    cSignature = "_" & parts(12) & "_" & parts(10)
+                    tempURL = GetUrlNamespace(aInfo.clientPath, cSignature)
+                    If LenB(tempURL) = 0 Then
+                        If collUrlNamespace Is Nothing Then
+                            Set collUrlNamespace = ReadNamespaces(aInfo)
+                        End If
+                        tempURL = collUrlNamespace("{" & parts(12) & "}{" & parts(10) _
+                                                 & "}{" & parts(11) & "}")
+                    End If
+                End If
             End If
-            If Not canAdd Then cPending.Add tempURL, Split(parts(0), " ")(2)
-        Case "libraryFolder "
-            If cFolders Is Nothing Then
-                Set cFolders = GetODDirs(aInfo.datPath, cParents)
-            End If
-            tempMount = parts(1)
-            temp = Split(parts(0), " ")
-            tempURL = cPending(temp(3))
-            syncID = Split(parts(4), " ")(1)
-            Dim tempID As String:     tempID = Split(temp(4), "+")(0)
+            cPending.Add tempURL, parts(2)
+        Case "libraryFolder"
+            If oDirs.dirCount = 0 Then ReadODDirs aInfo, oDirs
+            tempMount = parts(6)
+            tempURL = cPending(parts(3))
+            syncID = parts(9)
+            Dim tempID As String:     tempID = parts(4)
             Dim tempFolder As String: tempFolder = vbNullString
+            If aInfo.hasDatFile Then tempID = Split(tempID, "+")(0)
             On Error Resume Next
             Do
-                tempFolder = cFolders(tempID) & "/" & tempFolder
-                tempID = cParents(tempID)
-            Loop Until Err.Number <> 0
+                i = oDirs.idToIndex(tempID)
+                If Err.Number <> 0 Then Exit Do
+                With oDirs.arrDirs(i)
+                    tempFolder = .dirName & "/" & tempFolder
+                    tempID = .parentID
+                End With
+            Loop
             On Error GoTo 0
             canAdd = (LenB(tempFolder) > 0)
             tempURL = tempURL & tempFolder
-        Case "AddedScope "
-            If cFolders Is Nothing Then
-                Set cFolders = GetODDirs(aInfo.datPath, cParents)
-            End If
-            tempID = Split(parts(0), " ")(3)
+        Case "AddedScope"
+            If LenB(mainMount) = 0 Then Err.Raise vbErrInvalidFormatInResourceFile
+            If oDirs.dirCount = 0 Then ReadODDirs aInfo, oDirs
+            tempID = parts(3)
             tempFolder = vbNullString
             On Error Resume Next
             Do
-                tempFolder = cFolders(tempID) & PATH_SEPARATOR & tempFolder
-                tempID = cParents(tempID)
-            Loop Until Err.Number <> 0
+                i = oDirs.idToIndex(tempID)
+                If Err.Number <> 0 Then Exit Do
+                With oDirs.arrDirs(i)
+                    tempFolder = .dirName & PATH_SEPARATOR & tempFolder
+                    tempID = .parentID
+                End With
+            Loop
             On Error GoTo 0
             tempMount = mainMount & PATH_SEPARATOR & tempFolder
             syncID = mainSyncID
-            tempURL = parts(5)
+            tempURL = parts(11)
             If tempURL = " " Or LenB(tempURL) = 0 Then
                 tempURL = vbNullString
             Else
                 tempURL = tempURL & "/"
             End If
-            temp = Split(parts(4), " ")
-            cSignature = "_" & temp(3) & temp(1) & temp(4)
-            tempURL = GetUrlNamespace(aInfo.clientPath, cSignature) & tempURL
+            cSignature = "_" & parts(9) & parts(7) & parts(10)
+            tempNamespace = GetUrlNamespace(aInfo.clientPath, cSignature)
+            If LenB(tempNamespace) = 0 Then
+                cSignature = "_" & parts(9) & "_" & parts(7)
+                tempNamespace = GetUrlNamespace(aInfo.clientPath, cSignature)
+                If LenB(tempNamespace) = 0 Then
+                    If collUrlNamespace Is Nothing Then
+                        Set collUrlNamespace = ReadNamespaces(aInfo)
+                    End If
+                    tempNamespace = collUrlNamespace("{" & parts(9) & "}{" & parts(7) _
+                                             & "}{" & parts(8) & "}")
+                End If
+            End If
+            tempURL = tempNamespace & tempURL
             canAdd = True
         Case Else
             Exit For
@@ -2173,6 +2748,42 @@ Private Sub AddBusinessProviders(ByRef aInfo As ONEDRIVE_ACCOUNT_INFO)
 End Sub
 
 '*******************************************************************************
+'Splits a cid.ini file into space delimited parts
+'*******************************************************************************
+Private Function SplitIniLine(ByVal lineText As String) As String()
+    Dim i As Long
+    Dim j As Long
+    Dim k As Long
+    Dim res() As String: ReDim res(0 To 20)
+    Dim v As Variant
+    Dim s As String
+    Dim c As Long: c = Len(lineText)
+    '
+    i = InStr(1, lineText, " ")
+    res(0) = Left$(lineText, i - 1)
+    Do
+        Do
+            i = i + 1
+            s = Mid$(lineText, i, 1)
+        Loop Until s <> " "
+        If i > c Then Exit Do
+        If s = """" Then
+            i = i + 1
+            j = InStr(i, lineText, """")
+        Else
+            j = InStr(i + 1, lineText, " ")
+        End If
+        If j = 0 Then j = c + 1
+        k = k + 1
+        If k > UBound(res) Then ReDim Preserve res(0 To k)
+        res(k) = Mid$(lineText, i, j - i)
+        i = j
+    Loop Until j > c
+    ReDim Preserve res(0 To k)
+    SplitIniLine = res
+End Function
+
+'*******************************************************************************
 'Returns the URLNamespace from a provider's ClientPolicy*.ini file
 '*******************************************************************************
 Private Function GetUrlNamespace(ByRef clientPath As String _
@@ -2180,42 +2791,110 @@ Private Function GetUrlNamespace(ByRef clientPath As String _
     Dim cPath As String
     '
     cPath = Left$(clientPath, Len(clientPath) - 4) & cSignature & ".ini"
-    GetUrlNamespace = GetTagValue(cPath, "DavUrlNamespace = ")
+    GetUrlNamespace = GetTagValue(GetIniText(cPath), "DavUrlNamespace = ")
 End Function
 
 '*******************************************************************************
 'Returns the required value from an ini file text line based on given tag
 '*******************************************************************************
-Private Function GetTagValue(ByRef FilePath As String _
+Private Function GetTagValue(ByRef iniText As String _
                            , ByRef vTag As String) As String
-    Dim bytes() As Byte: ReadBytes FilePath, bytes
-    Dim fText As String: fText = bytes
+    Dim i As Long
+    Dim j As Long
     '
+    If Len(iniText) = 0 Then Exit Function
+    i = InStr(1, iniText, vTag)
+    If i = 0 Then Exit Function
+    i = i + Len(vTag)
+    '
+    j = InStr(i + 1, iniText, vbNewLine)
+    If j = 0 Then
+        GetTagValue = Mid$(iniText, i)
+    Else
+        GetTagValue = Mid$(iniText, i, j - i)
+    End If
+End Function
+
+'*******************************************************************************
+'Returns the contents of an OD ini file as UTF16LE
+'*******************************************************************************
+Private Function GetIniText(ByRef filePath As String) As String
+    Dim bytes() As Byte: ReadBytes filePath, bytes
+    '
+    On Error Resume Next
+    GetIniText = bytes
     #If Mac Then
-        fText = ConvertText(fText, codeUTF16LE, codeUTF8, True)
+        If Err.Number = 0 Then
+            GetIniText = ConvertText(GetIniText, codeUTF16LE, codeUTF8, True)
+        Else 'Open failed, try AppleScript with no text conversion needed
+            Dim tempPath As String
+            tempPath = MacScript("return path to startup disk as string") _
+                     & Replace(Mid$(filePath, 2), PATH_SEPARATOR, ":")
+            GetIniText = MacScript("return read file """ & tempPath & """ as string")
+        End If
     #End If
+    On Error GoTo 0
+End Function
+
+'*******************************************************************************
+'Reads DavUrlNamespace(s) from all ClientPolicy files within an account
+'*******************************************************************************
+Private Function ReadNamespaces(ByRef aInfo As ONEDRIVE_ACCOUNT_INFO) As Collection
+    Dim fileName As String: fileName = Dir(Replace(aInfo.clientPath, ".ini", "_*.ini"))
+    Dim collFiles As New Collection
+    Dim collRes As New Collection
+    Dim v As Variant
+    Dim iniText As String
+    Dim k As String
     '
-    Dim i As Long: i = InStr(1, fText, vTag) + Len(vTag)
-    GetTagValue = Mid$(fText, i, InStr(i, fText, vbNewLine) - i)
+    Do While LenB(fileName) > 0
+        collFiles.Add aInfo.folderPath & "/" & fileName
+        fileName = Dir
+    Loop
+    '
+    For Each v In collFiles
+        iniText = GetIniText(CStr(v))
+        k = GetTagValue(iniText, "IrmLibraryId = ") _
+          & GetTagValue(iniText, "SiteID = ") _
+          & GetTagValue(iniText, "WebID = ")
+        collRes.Add GetTagValue(iniText, "DavUrlNamespace = "), Replace(k, "-", "")
+    Next v
+    Set ReadNamespaces = collRes
 End Function
 
 '*******************************************************************************
 'Adds all providers for a Personal OneDrive account
 '*******************************************************************************
 Private Sub AddPersonalProviders(ByRef aInfo As ONEDRIVE_ACCOUNT_INFO)
-    Dim mainURL As String:    mainURL = GetUrlNamespace(aInfo.clientPath) & "/"
-    Dim libText As String:    libText = GetTagValue(aInfo.iniPath, "library = ")
-    Dim libParts() As String: libParts = Split(libText, """")
-    Dim mainMount As String:  mainMount = libParts(3)
-    Dim bytes() As Byte:      ReadBytes aInfo.groupPath, bytes
-    Dim groupText As String:  groupText = bytes
-    Dim syncID As String:     syncID = Split(libParts(4), " ")(2)
+    Dim mainURL As String
+    Dim libText As String
+    Dim libParts() As String
+    Dim mainMount As String
+    Dim groupText As String
+    Dim syncID As String
     Dim lineText As Variant
     Dim cID As String
     Dim i As Long
     Dim relPath As String
     Dim folderID As String
-    Dim cFolders As Collection
+    Dim oDirs As DirsInfo
+    Dim iniText As String
+    '
+    groupText = GetIniText(aInfo.groupPath)
+    iniText = GetIniText(aInfo.iniPath)
+    '
+    mainURL = GetUrlNamespace(aInfo.clientPath) & "/"
+    libText = GetTagValue(iniText, "library = ")
+    If LenB(libText) > 0 Then
+        libParts = SplitIniLine(libText)
+        mainMount = libParts(7)
+        syncID = libParts(9)
+    Else
+        libText = GetTagValue(iniText, "libraryScope = ")
+        libParts = SplitIniLine(libText)
+        mainMount = libParts(12)
+        syncID = libParts(7)
+    End If
     '
     With m_providers.arr(AddProvider())
         .webPath = mainURL & aInfo.cID & "/"
@@ -2223,9 +2902,6 @@ Private Sub AddPersonalProviders(ByRef aInfo As ONEDRIVE_ACCOUNT_INFO)
         .baseMount = mainMount
         .syncID = syncID
     End With
-    #If Mac Then
-        groupText = ConvertText(groupText, codeUTF16LE, codeUTF8, True)
-    #End If
     For Each lineText In Split(groupText, vbNewLine)
         If InStr(1, lineText, "_BaseUri", vbTextCompare) > 0 Then
             cID = LCase$(Mid$(lineText, InStrRev(lineText, "/") + 1))
@@ -2236,12 +2912,11 @@ Private Sub AddPersonalProviders(ByRef aInfo As ONEDRIVE_ACCOUNT_INFO)
             If i > 0 Then
                 relPath = Mid$(lineText, i + 8)
                 folderID = Left$(lineText, i - 1)
-                If cFolders Is Nothing Then
-                    Set cFolders = GetODDirs(aInfo.datPath)
-                End If
+                If oDirs.dirCount = 0 Then ReadODDirs aInfo, oDirs
                 With m_providers.arr(AddProvider())
                     .webPath = mainURL & cID & "/" & relPath & "/"
-                    .mountPoint = BuildPath(mainMount, cFolders(folderID) & "/")
+                    relPath = oDirs.arrDirs(oDirs.idToIndex(folderID)).dirName
+                    .mountPoint = BuildPath(mainMount, relPath & "/")
                     .baseMount = mainMount
                     .syncID = syncID
                 End With
@@ -2251,15 +2926,27 @@ Private Sub AddPersonalProviders(ByRef aInfo As ONEDRIVE_ACCOUNT_INFO)
 End Sub
 
 '*******************************************************************************
-'Utility - Retrieves all folders from an OneDrive user .dat file
+'Utility - Retrieves all folders from an OneDrive account
 '*******************************************************************************
-Private Function GetODDirs(ByRef FilePath As String _
-                         , Optional ByRef outParents As Collection) As Collection
+Private Sub ReadODDirs(ByRef aInfo As ONEDRIVE_ACCOUNT_INFO _
+                     , ByRef outdirs As DirsInfo)
+    If aInfo.hasDatFile Then
+        ReadDirsFromDat aInfo.datPath, outdirs
+    End If
+    If outdirs.dirCount = 0 Then
+        ReadDirsFromDB aInfo.dbPath, aInfo.isPersonal, outdirs
+    End If
+End Sub
+
+'*******************************************************************************
+'Utility - Retrieves all folders from an OneDrive user dat file
+'*******************************************************************************
+Private Sub ReadDirsFromDat(ByRef filePath As String, ByRef outdirs As DirsInfo)
     Dim fileNumber As Long: fileNumber = FreeFile()
     '
-    Open FilePath For Binary Access Read As #fileNumber
-    Dim Size As Long: Size = LOF(fileNumber)
-    If Size = 0 Then GoTo CloseFile
+    Open filePath For Binary Access Read As #fileNumber
+    Dim size As Long: size = LOF(fileNumber)
+    If size = 0 Then GoTo CloseFile
     '
     Const hCheckSize As Long = 8
     Const idSize As Long = 39
@@ -2277,28 +2964,31 @@ Private Function GetODDirs(ByRef FilePath As String _
     Dim s As String
     Dim lastRecord As Long
     Dim i As Long
-    Dim cFolders As Collection
     Dim lastFileChange As Date
     Dim currFileChange As Date
     Dim stepSize As Long
     Dim bytes As Long
-    Dim folderID As String
+    Dim dirID As String
     Dim parentID As String
-    Dim folderName As String
+    Dim dirName As String
     Dim idPattern As String
     Dim vbNullByte As String: vbNullByte = ChrB$(0)
     Dim hFolder As String:    hFolder = ChrB$(2) 'x02
     Dim hCheck As String * 4: MidB$(hCheck, 1) = ChrB$(1) 'x01000000
     '
-    idPattern = Replace(Space$(16), " ", "[a-fA-F0-9]") & "*"
+    idPattern = Replace(Space$(12), " ", "[a-fA-F0-9]") & "*"
     For stepSize = 16 To 8 Step -8
         lastFileChange = 0
         Do
             i = 0
-            currFileChange = FileDateTime(FilePath)
+            currFileChange = FileDateTime(filePath)
             If currFileChange > lastFileChange Then
-                Set cFolders = New Collection
-                Set outParents = New Collection
+                With outdirs
+                    Set .idToIndex = New Collection
+                    .dirCount = 0
+                    .dirUBound = 256
+                    ReDim .arrDirs(1 To .dirUBound)
+                End With
                 lastFileChange = currFileChange
                 lastRecord = 1
             End If
@@ -2309,14 +2999,14 @@ Private Function GetODDirs(ByRef FilePath As String _
                 If MidB$(s, i - stepSize, 1) = hFolder Then
                     i = i + hCheckSize
                     bytes = Clamp(InStrB(i, s, vbNullByte) - i, 0, idSize)
-                    folderID = StrConv(MidB$(s, i, bytes), vbUnicode)
+                    dirID = StrConv(MidB$(s, i, bytes), vbUnicode)
                     '
                     i = i + idSize
                     bytes = Clamp(InStrB(i, s, vbNullByte) - i, 0, idSize)
                     parentID = StrConv(MidB$(s, i, bytes), vbUnicode)
                     '
                     i = i + fNameOffset
-                    If folderID Like idPattern And parentID Like idPattern Then
+                    If dirID Like idPattern And parentID Like idPattern Then
                         bytes = InStr((i + 1) \ 2, s, nameEnd) * 2 - i - 1
                         #If Mac Then
                             Do While bytes Mod 4 > 0 And bytes > 0
@@ -2334,13 +3024,24 @@ Private Function GetODDirs(ByRef FilePath As String _
                             i = i - checkToName
                             Exit Do
                         End If
-                        folderName = MidB$(s, i, bytes)
+                        dirName = MidB$(s, i, bytes)
                         #If Mac Then
-                            folderName = ConvertText(folderName, codeUTF16LE _
+                            dirName = ConvertText(dirName, codeUTF16LE _
                                                    , codeUTF32LE, True)
                         #End If
-                        cFolders.Add folderName, folderID
-                        outParents.Add parentID, folderID
+                        With outdirs
+                            .dirCount = .dirCount + 1
+                            If .dirCount > .dirUBound Then
+                                .dirUBound = .dirUBound * 2
+                                ReDim Preserve .arrDirs(1 To .dirUBound)
+                            End If
+                            .idToIndex.Add .dirCount, dirID
+                            With outdirs.arrDirs(.dirCount)
+                                .dirID = dirID
+                                .dirName = dirName
+                                .parentID = parentID
+                            End With
+                        End With
                     End If
                 End If
                 i = InStrB(i + 1, s, hCheck)
@@ -2349,13 +3050,15 @@ Private Function GetODDirs(ByRef FilePath As String _
             If i > stepSize Then
                 lastRecord = lastRecord - chunkSize + (i \ 2) * 2
             End If
-        Loop Until lastRecord > Size
-        If cFolders.Count > 0 Then Exit For
+        Loop Until lastRecord > size
+        If outdirs.dirCount > 0 Then Exit For
     Next stepSize
-    Set GetODDirs = cFolders
+    If outdirs.dirCount > 0 Then
+        ReDim Preserve outdirs.arrDirs(1 To outdirs.dirCount)
+    End If
 CloseFile:
     Close #fileNumber
-End Function
+End Sub
 Private Function Clamp(ByVal v As Long, ByVal lowB As Long, uppB As Long) As Long
     If v < lowB Then
         Clamp = lowB
@@ -2367,11 +3070,250 @@ Private Function Clamp(ByVal v As Long, ByVal lowB As Long, uppB As Long) As Lon
 End Function
 
 '*******************************************************************************
+'Utility - Retrieves all folders from an OneDrive user database file
+'*******************************************************************************
+Private Sub ReadDirsFromDB(ByRef filePath As String _
+                         , ByVal isPersonal As Boolean _
+                         , ByRef outdirs As DirsInfo)
+    If Not IsFile(filePath) Then Exit Sub
+    Dim fileNumber As Long: fileNumber = FreeFile()
+    '
+    Open filePath For Binary Access Read As #fileNumber
+    Dim size As Long: size = LOF(fileNumber)
+    If size = 0 Then GoTo CloseFile
+    '
+    Const chunkSize As Long = &H100000 '1MB
+    Const minName As Long = 15
+    Const maxSigByte As Byte = 9
+    Const maxHeader As Long = 21
+    Const minIDSize As Long = 12
+    Const maxIDSize As Long = 48
+    Const minThreeIDSizes As Long = minIDSize * 3
+    Const maxThreeIDSizes As Long = maxIDSize * 3
+    Const leadingBuff As Long = maxHeader + maxThreeIDSizes
+    Const headBytesOffset As Long = 15
+    Const bangCode As Long = 33 'Asc("!")
+    Dim curlyStart As String: curlyStart = ChrW$(&H7B22) '"{
+    Dim quoteB As String:     quoteB = ChrB$(&H22)       '"
+    Dim bangB As String:      bangB = ChrB$(bangCode)    '!
+    Dim sig As String
+    Dim b(1 To chunkSize) As Byte
+    Dim s As String
+    Dim lastRecord As Long
+    Dim i As Long
+    Dim j As Long
+    Dim k As Long
+    Dim idSize(1 To 4) As Long
+    Dim nameSize As Long
+    Dim dirID As String
+    Dim parentID As String
+    Dim dirName As String
+    Dim nameEnd As Long
+    Dim nameStart As Long
+    Dim isASCII As Boolean
+    Dim mustAdd As Boolean
+    Dim idPattern As String
+    Dim o As Long
+    '
+    idPattern = Replace(Space$(12), " ", "[a-fA-F0-9]")
+    If isPersonal Then
+        sig = bangB
+        idPattern = "*" & idPattern & "![a-fA-F0-9]*"
+    Else
+        sig = curlyStart
+        idPattern = idPattern & "*"
+    End If
+    Do
+        Dim currFileChange As Date: currFileChange = FileDateTime(filePath)
+        Dim lastFileChange As Date
+        '
+        i = 0
+        If currFileChange > lastFileChange Then
+            With outdirs
+                Set .idToIndex = New Collection
+                .dirCount = 0
+                .dirUBound = 256
+                ReDim .arrDirs(1 To .dirUBound)
+            End With
+            lastFileChange = currFileChange
+            lastRecord = 1
+        End If
+        Get fileNumber, lastRecord, b
+        s = b
+        i = InStrB(1, s, sig)
+        Do While i > 0
+            If isPersonal Then
+                For j = i - 1 To i - maxIDSize Step -1
+                    If j = 0 Then GoTo NextSig
+                    If b(j) < bangCode Then Exit For
+                Next j
+                If (j < maxHeader) Or (i - j < minIDSize) Then GoTo NextSig
+            Else
+                j = InStrB(i + 2, s, quoteB)
+                If j = 0 Then Exit Do 'Next chunk
+                idSize(4) = j - i + 1
+                If idSize(4) > maxIDSize Then GoTo NextSig
+                For j = i - 1 To i - maxThreeIDSizes Step -1
+                    If j = 0 Then GoTo NextSig
+                    If b(j) < bangCode Then Exit For
+                Next j
+                If j < maxHeader Then GoTo NextSig
+                idSize(1) = i - j - 1 'ID 1+2+3
+                If idSize(1) < minThreeIDSizes Then GoTo NextSig
+            End If
+            '
+            o = 0
+            k = j + 1 'ID1 Start
+            For j = j To j - headBytesOffset + 1 Step -1
+                If j < 2 Then GoTo NextSig
+                If b(j) > maxSigByte Then
+                    If j < 3 Then GoTo NextSig
+                    If b(j) = &HD And b(j - 1) = &HD Then
+                        j = j - 2
+                        o = 1
+                        Exit For
+                    Else
+                        GoTo NextSig
+                    End If
+                End If
+            Next j
+            If (b(j) <= maxSigByte) And (b(j - 1) < &H80) Then j = j - 1
+            For j = j To j - 4 Step -1
+                If j < 2 Then GoTo NextSig
+                If b(j) >= minName Then Exit For
+            Next j
+            '
+            nameSize = b(j)
+            If nameSize Mod 2 = 0 Then GoTo NextSig
+            nameSize = (nameSize - 13) / 2
+            If b(j - 1) > &H7F Then
+                nameSize = (b(j - 1) - &H80) * &H40 + nameSize
+                j = j - 1
+            End If
+            If j < 5 Then GoTo NextSig
+            If (nameSize < 1) Or (b(j - 4) = 0) Then GoTo NextSig
+            '
+            If isPersonal Then
+                idSize(4) = (b(j - 1) - 13) / 2
+                idSize(3) = (b(j - 2) - 13) / 2
+                idSize(2) = (b(j - 3) - 13) / 2
+                idSize(1) = (b(j - 4) - 13) / 2
+                nameStart = k + idSize(1) + idSize(2) + idSize(3) + idSize(4)
+            Else
+                If o = 1 Then
+                    o = 0
+                    For j = j To j - 4 Step -1
+                        If j < 2 Then GoTo NextSig
+                        If b(j - 1) > maxSigByte Then Exit For
+                        If b(j - 1) = 1 Then o = o + 1
+                    Next j
+                End If
+                If b(j - 1) <> idSize(4) * 2 + 13 Then GoTo NextSig
+                idSize(3) = (b(j - 2) - 13) / 2
+                idSize(2) = (b(j - 3) - 13) / 2
+                idSize(1) = idSize(1) - idSize(2) - idSize(3)
+                nameStart = i + idSize(4) + o
+            End If
+            For j = 1 To 4
+                If (idSize(j) < minIDSize) _
+                Or (idSize(j) > maxIDSize) Then GoTo NextSig
+            Next j
+            '
+            nameEnd = nameStart + nameSize - 1
+            If nameEnd > chunkSize Then Exit Do 'Next chunk
+            '
+            dirID = StrConv(MidB$(s, k, idSize(1)), vbUnicode)
+            If Not dirID Like idPattern Then GoTo NextSig
+            '
+            k = k + idSize(1)
+            parentID = StrConv(MidB$(s, k, idSize(2)), vbUnicode)
+            If Not parentID Like idPattern Then GoTo NextSig
+            '
+            If isPersonal Then
+                k = k + idSize(2)
+                If Not StrConv(MidB$(s, k, idSize(3)), vbUnicode) _
+                       Like idPattern Then GoTo NextSig
+                If Not StrConv(MidB$(s, k + idSize(3), idSize(4)), vbUnicode) _
+                       Like idPattern Then GoTo NextSig
+            End If
+            '
+            On Error Resume Next
+            j = outdirs.idToIndex(dirID)
+            mustAdd = (Err.Number <> 0)
+            On Error GoTo 0
+            '
+            If mustAdd Then
+                With outdirs
+                    .dirCount = .dirCount + 1
+                    If .dirCount > .dirUBound Then
+                        .dirUBound = .dirUBound * 2
+                        ReDim Preserve .arrDirs(1 To .dirUBound)
+                    End If
+                    .idToIndex.Add .dirCount, dirID
+                    j = .dirCount
+                End With
+                With outdirs.arrDirs(j)
+                    .dirName = MidB$(s, nameStart, nameSize)
+                    .isNameASCII = True
+                    For k = nameStart To nameEnd
+                        If b(k) > &H7F Then
+                            .isNameASCII = False
+                            Exit For
+                        End If
+                    Next k
+                    If .isNameASCII Then
+                        .dirName = StrConv(.dirName, vbUnicode)
+                    Else
+                        .dirName = ConvertText(.dirName, codeUTF16LE, codeUTF8)
+                    End If
+                    .dirID = dirID
+                    .parentID = parentID
+                End With
+            Else
+                With outdirs.arrDirs(j)
+                    If (Not .isNameASCII) Or (Len(.dirName) < nameSize) Then
+                        dirName = MidB$(s, nameStart, nameSize)
+                        isASCII = True
+                        For k = nameStart To nameEnd
+                            If b(k) > &H7F Then
+                                isASCII = False
+                                Exit For
+                            End If
+                        Next k
+                        If isASCII Then
+                            .dirName = StrConv(dirName, vbUnicode)
+                        Else
+                            .dirName = ConvertText(dirName, codeUTF16LE, codeUTF8)
+                        End If
+                        .isNameASCII = isASCII
+                    End If
+                End With
+            End If
+            i = nameEnd
+NextSig:
+            i = InStrB(i + 1, s, sig)
+        Loop
+        If i = 0 Then
+            lastRecord = lastRecord + chunkSize - leadingBuff
+        ElseIf i > leadingBuff Then
+            lastRecord = lastRecord + i - leadingBuff
+        Else
+            lastRecord = lastRecord + i
+        End If
+    Loop Until lastRecord > size
+    If outdirs.dirCount > 0 Then
+        ReDim Preserve outdirs.arrDirs(1 To outdirs.dirCount)
+    End If
+CloseFile:
+    Close #fileNumber
+End Sub
+
+'*******************************************************************************
 'Checks if a path indicates a file path
 'Note that if C:\Test\1.txt is valid then C:\Test\\///1.txt will also be valid
 'Most VBA methods consider valid any path separators with multiple characters
 '*******************************************************************************
-Public Function IsFile(ByRef FilePath As String) As Boolean
+Public Function IsFile(ByRef filePath As String) As Boolean
     #If Mac Then
         Const maxFileLen As Long = 259 'To be updated
     #Else
@@ -2381,25 +3323,25 @@ Public Function IsFile(ByRef FilePath As String) As Boolean
     Dim fAttr As VbFileAttribute
     '
     On Error Resume Next
-    fAttr = GetAttr(FilePath)
+    fAttr = GetAttr(filePath)
     If Err.Number = errBadFileNameOrNumber Then 'Unicode characters
         #If Mac Then
-
+            
         #Else
-            IsFile = GetFSO().fileExists(FilePath)
+            IsFile = GetFSO().fileExists(filePath)
         #End If
     ElseIf Err.Number = 0 Then
         IsFile = Not CBool(fAttr And vbDirectory)
-    ElseIf Len(FilePath) > maxFileLen Then
+    ElseIf Len(filePath) > maxFileLen Then
         #If Mac Then
 
         #Else
-            If Left$(FilePath, 4) = "\\?\" Then
-                IsFile = GetFSO().fileExists(FilePath)
-            ElseIf Left$(FilePath, 2) = "\\" Then
-                IsFile = GetFSO().fileExists("\\?\UNC" & Mid$(FilePath, 2))
+            If Left$(filePath, 4) = "\\?\" Then
+                IsFile = GetFSO().fileExists(filePath)
+            ElseIf Left$(filePath, 2) = "\\" Then
+                IsFile = GetFSO().fileExists("\\?\UNC" & Mid$(filePath, 2))
             Else
-                IsFile = GetFSO().fileExists("\\?\" & FilePath)
+                IsFile = GetFSO().fileExists("\\?\" & filePath)
             End If
         #End If
     End If
@@ -2458,8 +3400,8 @@ Public Function IsFolderEditable(ByRef folderPath As String) As Boolean
     '
     On Error Resume Next
     MkDir tempFolder
-    If Err.Number = 0 Then RmDir tempFolder
     IsFolderEditable = (Err.Number = 0)
+    If IsFolderEditable Then RmDir tempFolder
     On Error GoTo 0
 End Function
 
@@ -2508,10 +3450,8 @@ Public Function MoveFolder(ByRef sourcePath As String _
     '   a directory or folder within the same drive. Try 'Name' first
     On Error Resume Next
     Name sourcePath As destinationPath
-    If Err.Number = 0 Then
-        MoveFolder = True
-        Exit Function
-    End If
+    MoveFolder = (Err.Number = 0)
+    If MoveFolder Then Exit Function
     On Error GoTo 0
     '
     'Try FSO if available
@@ -2539,20 +3479,37 @@ Public Function MoveFolder(ByRef sourcePath As String _
 End Function
 
 '*******************************************************************************
+'Returns the parent folder path for a given file or folder local path
+'*******************************************************************************
+Public Function ParentFolder(ByRef localPath As String) As String
+    Const ps As String = PATH_SEPARATOR
+    Dim fixedPath As String: fixedPath = FixPathSeparators(localPath)
+    Dim i As Long
+    '
+    If Len(fixedPath) < 3 Then Exit Function
+    i = InStrRev(fixedPath, ps, Len(fixedPath) - 1)
+    If i < 2 Then Exit Function
+    '
+    If Mid$(fixedPath, i - 1, 1) <> ps Then
+        ParentFolder = Left$(fixedPath, i - 1)
+    End If
+End Function
+
+'*******************************************************************************
 'Reads a file into an array of Bytes
 '*******************************************************************************
-Public Sub ReadBytes(ByRef FilePath As String, ByRef result() As Byte)
-    If Not IsFile(FilePath) Then
+Public Sub ReadBytes(ByRef filePath As String, ByRef result() As Byte)
+    If Not IsFile(filePath) Then
         Erase result
         Exit Sub
     End If
     '
     Dim fileNumber As Long: fileNumber = FreeFile()
     '
-    Open FilePath For Binary Access Read As #fileNumber
-    Dim Size As Long: Size = LOF(fileNumber)
-    If Size > 0 Then
-        ReDim result(0 To Size - 1)
+    Open filePath For Binary Access Read As #fileNumber
+    Dim size As Long: size = LOF(fileNumber)
+    If size > 0 Then
+        ReDim result(0 To size - 1)
         Get fileNumber, 1, result
     Else
         Erase result
@@ -2560,5 +3517,122 @@ Public Sub ReadBytes(ByRef FilePath As String, ByRef result() As Byte)
     Close #fileNumber
 End Sub
 
+'*******************************************************************************
+'Creates a text file used for diagnosing OneDrive logic issues
+'*******************************************************************************
+Private Sub CreateODDiagnosticsFile()
+    Dim folderPath As String
+    Do
+        folderPath = BrowseForFolder(, "Choose target folder for diagnostics")
+        If LenB(folderPath) = 0 Then Exit Sub
+        If IsFolderEditable(folderPath) Then Exit Do
+        MsgBox "Please choose a folder with write access"
+    Loop
+    '
+    Const vbTwoNewLines As String = vbNewLine & vbNewLine
+    Const fileName As String = "DiagnosticsOD.txt"
+    Dim accountsInfo As ONEDRIVE_ACCOUNTS_INFO
+    Dim fileNumber As Long: fileNumber = FreeFile()
+    Dim filePath As String: filePath = BuildPath(folderPath, fileName)
+    Dim res As String
+    Dim i As Long
+    Dim temp(0 To 2) As String
+    '
+    #If Mac Then
+        temp(0) = "Mac"
+    #Else
+        temp(0) = "Win"
+    #End If
+    #If VBA7 Then
+        temp(1) = "VBA7"
+    #Else
+        temp(1) = "VBA6"
+    #End If
+    #If Win64 Then
+        temp(2) = "x64"
+    #Else
+        temp(2) = "x32"
+    #End If
+    res = Join(temp, " ") & vbTwoNewLines & String$(80, "-") & vbTwoNewLines
+    '
+    ReadODAccountsInfo accountsInfo
+    For i = 1 To accountsInfo.pCount 'Check for unsynchronized accounts
+        Dim j As Long
+        For j = i + 1 To accountsInfo.pCount
+            ValidateAccounts accountsInfo.arr(i), accountsInfo.arr(j)
+        Next j
+    Next i
+    res = res & "Accounts found: " & accountsInfo.pCount & vbTwoNewLines
+    '
+    For i = 1 To accountsInfo.pCount
+        With accountsInfo.arr(i)
+            res = res & "Name: " & .accountName & vbNewLine
+            res = res & "ID: " & .cID & vbNewLine
+            res = res & "Has DAT: " & .hasDatFile & vbNewLine
+            res = res & "Is Valid: " & .isValid & vbNewLine
+        End With
+        res = res & vbNewLine
+    Next i
+    res = res & String$(80, "-")
+    res = res & vbTwoNewLines
+    '
+    ReadODProviders True
+    res = res & "Providers found: " & m_providers.pCount & vbTwoNewLines
+    For i = 1 To m_providers.pCount
+        With m_providers.arr(i)
+            res = res & "Base Mount: " & .baseMount & vbNewLine
+            res = res & "Is Business: " & .isBusiness & vbNewLine
+            res = res & "Is Main: " & .isMain & vbNewLine
+            res = res & "Mount Point: " & .mountPoint & vbNewLine
+            res = res & "Sync ID: " & .syncID & vbNewLine
+            res = res & "Web Path: " & .webPath & vbNewLine
+            #If Mac Then
+                res = res & "Sync Dir: " & .syncDir & vbNewLine
+            #End If
+        End With
+        res = res & vbNewLine
+    Next i
+    '
+    Open filePath For Output As #fileNumber
+    Print #fileNumber, res
+    Close #fileNumber
+    '
+    MsgBox "Created [" & fileName & "] diagnostics file", vbInformation
+End Sub
 
+'*******************************************************************************
+'Returns a colection of web paths for the main provider of each business account
+'*******************************************************************************
+Public Function GetMainBusinessURLs() As Collection
+    Dim i As Long
+    Dim res As New Collection
+    '
+    ReadODProviders False
+    For i = 1 To m_providers.pCount
+        If m_providers.arr(i).isBusiness And m_providers.arr(i).isMain Then
+            res.Add m_providers.arr(i).webPath
+        End If
+    Next i
+    Set GetMainBusinessURLs = res
+End Function
 
+'*******************************************************************************
+'Checks if array has elements
+'*******************************************************************************
+Public Function HasElements(arr As Variant, Optional dimension As Variant) As Boolean
+    Dim dimen As Integer
+    
+    If IsMissing(dimension) Then
+        dimen = 1
+    Else
+        dimen = CInt(dimension)
+    End If
+    
+    On Error GoTo NoElements
+    
+    HasElements = (UBound(arr, dimen) >= LBound(arr, dimen))
+    Exit Function
+    
+NoElements:
+    HasElements = False
+End Function

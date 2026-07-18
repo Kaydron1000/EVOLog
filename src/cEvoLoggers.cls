@@ -79,9 +79,4 @@ Public Property Get Keys() As Collection
     Set Keys = myCustomCollectionKeys
 End Property
 
-Public Property Get NewEnum() As IUnknown
-Attribute NewEnum.VB_UserMemId = -4
-    Set NewEnum = myCustomCollection.[_NewEnum]
-End Property
-
 

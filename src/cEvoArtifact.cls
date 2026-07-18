@@ -39,6 +39,7 @@ Public Charged As Boolean
 Public Message As String
 Public TimeStamp As Date
 Public LoggingLevel As LoggingLevels
+Public Parameters As Variant
 
 
 Public Static Function LoggingLevelNames() As Collection
@@ -48,6 +49,8 @@ End Function
 
 Public Function FormatArtifact(MessageTemplate As String, Optional TimeStampFormatString As Variant = "yyyymmdd_hhmmss", _
                                Optional DateFormatString As Variant = "mm/dd/yy", Optional TimeFormatString As Variant = "hh:mm:ss") As String
+    Dim indx As Integer
+    
     ''TODO: Fix milliseconds formatting
     FormatArtifact = UCase(MessageTemplate)
     FormatArtifact = Replace(FormatArtifact, "#LOGGINGLEVEL#", pLoggingLevelNames(LoggingLevel))
@@ -55,6 +58,11 @@ Public Function FormatArtifact(MessageTemplate As String, Optional TimeStampForm
     FormatArtifact = Replace(FormatArtifact, "#TIME#", Format(TimeStamp, TimeFormatString) & Right(Format(Timer, "0.000"), 4))
     FormatArtifact = Replace(FormatArtifact, "#TIMESTAMP#", Format(TimeStamp, TimeStampFormatString) & Right(Format(Timer, "0.000"), 4))
     FormatArtifact = Replace(FormatArtifact, "#MESSAGE#", Message)
+    If HasElements(Parameters) Then
+        For indx = LBound(Parameters) To UBound(Parameters)
+            FormatArtifact = Replace(FormatArtifact, "{{" & indx - LBound(Parameters) & "}}", CStr(Parameters(indx)))
+        Next
+    End If
     
 '    s = Format(Now, "yyyy-mm-dd hh:mm:ss") & Right(Format(Timer, "0.000"), 4)
 End Function

@@ -148,7 +148,7 @@ End Sub
 Sub AddConduit(Conduit As ILogConduit)
     Me.FlushBatchedLogArtifacts
     Conduit.InitConduit Me
-    pActiveConduits.Add Conduit, Conduit.ConduitName
+    pActiveConduits.Add Conduit, Conduit.conduitName
 End Sub
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -160,13 +160,13 @@ Public Function RemoveConduit(Conduit As Variant) As ILogConduit
     If TypeOf Conduit Is ILogConduit Then
         Set ConduitObj = Conduit
     Else
-        Set ConduitObj = pActiveConduits(Conduit)
+        Set ConduitObj = pActiveConduits.Item(Conduit)
     End If
 
     Me.FlushBatchedLogArtifacts
     
     ConduitObj.ParentEvoLoggers.Remove Me.LoggerName
-    pActiveConduits.Remove ConduitObj.ConduitName
+    pActiveConduits.Remove ConduitObj.conduitName
     
     Set RemoveConduit = ConduitObj
 End Function
@@ -182,7 +182,7 @@ End Function
 ''Gets the specified conduit.
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Function GetConduit(Item As Variant) As ILogConduit
-    Set GetConduit = pActiveConduits(Item)
+    Set GetConduit = pActiveConduits.Item(Item)
 End Function
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -197,11 +197,12 @@ End Sub
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''Log a message to all attached conduits.
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Sub LogArtifact(LoggingLevel As LoggingLevels, LogMessage As String)
+Sub LogArtifact(LoggingLevel As LoggingLevels, LogMessage As String, ParamArray objs() As Variant)
     pBatchedLogArtifacts(pNextBatchCnt).Charged = True
     pBatchedLogArtifacts(pNextBatchCnt).LoggingLevel = LoggingLevel
     pBatchedLogArtifacts(pNextBatchCnt).Message = LogMessage
     pBatchedLogArtifacts(pNextBatchCnt).TimeStamp = Now()
+    pBatchedLogArtifacts(pNextBatchCnt).Parameters = objs
     
     ChannelLogArtifactObject pBatchedLogArtifacts(pNextBatchCnt)
 End Sub
@@ -210,12 +211,14 @@ Sub LogArtifactObject(Artifact As cEvoArtifact)
     pBatchedLogArtifacts(pNextBatchCnt).LoggingLevel = Artifact.LoggingLevel
     pBatchedLogArtifacts(pNextBatchCnt).Message = Artifact.Message
     pBatchedLogArtifacts(pNextBatchCnt).TimeStamp = Artifact.TimeStamp
+    pBatchedLogArtifacts(pNextBatchCnt).Parameters = Artifact.Parameters
     
     ChannelLogArtifactObject pBatchedLogArtifacts(pNextBatchCnt)
 End Sub
     
 Private Sub ChannelLogArtifactObject(Artifact As cEvoArtifact)
     Dim logConduit As ILogConduit
+    Dim conIndx As Integer
     
     If pBatchOutput Then
         pNextBatchCnt = pNextBatchCnt + 1
@@ -224,7 +227,8 @@ Private Sub ChannelLogArtifactObject(Artifact As cEvoArtifact)
             FlushBatchedLogArtifacts
         End If
     Else
-        For Each logConduit In pActiveConduits
+        For conIndx = 1 To pActiveConduits.Count
+            Set logConduit = pActiveConduits.Item(conIndx)
             logConduit.ChannelLogArtifact Artifact
             Artifact.Charged = False
         Next
@@ -237,6 +241,7 @@ End Sub
 Sub FlushBatchedLogArtifacts()
     Dim logConduit As ILogConduit
     Dim indx As Integer
+    Dim conIndx As Integer
     Dim sendArtifacts() As cEvoArtifact
     
     If BatchOutput And pNextBatchCnt > 0 Then
@@ -248,7 +253,8 @@ Sub FlushBatchedLogArtifacts()
         Next
         
         '' Send to conduits
-        For Each logConduit In pActiveConduits
+        For conIndx = 1 To pActiveConduits.Count
+            Set logConduit = pActiveConduits.Item(conIndx)
             logConduit.ChannelLogArtifacts sendArtifacts
         Next
         

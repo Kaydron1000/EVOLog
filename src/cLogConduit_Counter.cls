@@ -38,7 +38,7 @@ Attribute VB_Exposed = True
 Option Explicit
 Implements ILogConduit
 
-Dim pParentLoggers As cEvoLoggers
+Dim pParentEvoLoggers As cEvoLoggers
 Dim pLoggingLevelNames As Collection
 Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
@@ -47,11 +47,11 @@ Dim pLogCounts() As Long
 
 
 Property Get ParentEvoLoggers() As cEvoLoggers
-    Set ParentLoggers = pParentLoggers
+    Set ParentEvoLoggers = pParentEvoLoggers
 End Property
 
-Property Get ConduitName() As String
-    ConduitName = pConduitName
+Property Get conduitName() As String
+    conduitName = pConduitName
 End Property
 
 Property Let ConduitLoggingLevel(Level As LoggingLevels)
@@ -90,13 +90,13 @@ Property Get FatalCount() As Long
     FatalCount = pLogCounts(6)
 End Property
 Private Sub InitConduit(ParentLogger As cEvoLogger)
-    pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
+    pParentEvoLoggers.Add ParentEvoLogger, ParentEvoLogger.LoggerName
     
     ReDim pLogCounts(1 To pLoggingLevelNames.Count)
 End Sub
 
-Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose)
-    pConduitName = ConduitName
+Sub Init(conduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose)
+    pConduitName = conduitName
     
     Me.ConduitLoggingLevel = ConduitLoggingLevel
 End Sub
@@ -152,7 +152,7 @@ Sub ClearCounts()
 End Sub
 
 Private Sub Class_Initialize()
-    Set pParentLoggers = New cEvoLoggers
+    Set pParentEvoLoggers = New cEvoLoggers
     
     Set pLoggingLevelNames = New Collection
     pLoggingLevelNames.Add "Verbose", "Verbose"
@@ -174,7 +174,7 @@ Private Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
 End Property
 
 Private Property Get ILogConduit_ConduitName() As String
-    ILogConduit_ConduitName = Me.ConduitName
+    ILogConduit_ConduitName = Me.conduitName
 End Property
 
 Private Property Let ILogConduit_ConduitLoggingLevel(Level As LoggingLevels)
@@ -204,4 +204,3 @@ End Sub
 Private Sub ILogConduit_ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     ChannelLogArtifacts LogArtifacts
 End Sub
-

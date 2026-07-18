@@ -42,7 +42,7 @@ Option Explicit
 Property Get ParentEvoLoggers() As cEvoLoggers
 End Property
 
-Property Get ConduitName() As String
+Property Get conduitName() As String
 End Property
 
 Property Let ConduitLoggingLevel(Level As LoggingLevels)
@@ -57,7 +57,7 @@ End Property
 Property Get MessageTemplate() As String
 End Property
 
-Sub InitConduit(ParentLogger As cEvoLogger)
+Sub InitConduit(ParentEvoLogger As cEvoLogger)
 End Sub
 
 Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)

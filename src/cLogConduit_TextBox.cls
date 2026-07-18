@@ -37,25 +37,25 @@ Attribute VB_Exposed = True
 Option Explicit
 Implements ILogConduit
 
-Dim pParentLoggers As cEvoLoggers
+Dim pParentEvoLoggers As cEvoLoggers
 Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
 
-Dim pTextBox As MSForms.TextBox
+Dim pTextBox As Object
 
 '*******************************************************************************
 ' Parent Loggers that log messages are channeled from.
 '*******************************************************************************
-Public Property Get ParentLoggers() As cEvoLoggers
-    Set ParentLoggers = pParentLoggers
+Public Property Get ParentEvoLoggers() As cEvoLoggers
+    Set ParentEvoLoggers = pParentEvoLoggers
 End Property
 
 '*******************************************************************************
 ' ILogConduit Name
 '*******************************************************************************
-Property Get ConduitName() As String
-    ConduitName = pConduitName
+Property Get conduitName() As String
+    conduitName = pConduitName
 End Property
 
 '*******************************************************************************
@@ -89,17 +89,17 @@ End Property
 '*******************************************************************************
 ' Initializes properties of the conduit. Meant for when adding to a cEvoLogger.
 '*******************************************************************************
-Private Sub InitConduit(ParentLogger As cEvoLogger)
-    pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
+Private Sub InitConduit(ParentEvoLogger As cEvoLogger)
+    pParentEvoLoggers.Add ParentEvoLogger, ParentEvoLogger.LoggerName
 End Sub
 
 '*******************************************************************************
 ' Initializes properties of the conduit. Initializes everything for the
 ' channeling to a Textbox except for the parent cEvoLogger object.
 '*******************************************************************************
-Sub Init(TextBox As MSForms.TextBox, ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Information)
+Sub Init(TextBox As Object, conduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Information)
     Set pTextBox = TextBox
-    pConduitName = ConduitName
+    pConduitName = conduitName
     
     Me.ConduitLoggingLevel = ConduitLoggingLevel
 End Sub
@@ -138,7 +138,7 @@ End Sub
 '*******************************************************************************
 Private Sub Class_Initialize()
     pMessageTemplate = "[#LOGGINGLEVEL#] [#DATE# #TIME#]: #MESSAGE#"
-    Set pParentLoggers = New cEvoLoggers
+    Set pParentEvoLoggers = New cEvoLoggers
 End Sub
 
 
@@ -152,7 +152,7 @@ Private Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
 End Property
 
 Private Property Get ILogConduit_ConduitName() As String
-    ILogConduit_ConduitName = Me.ConduitName
+    ILogConduit_ConduitName = Me.conduitName
 End Property
 
 Private Property Let ILogConduit_ConduitLoggingLevel(Level As LoggingLevels)
