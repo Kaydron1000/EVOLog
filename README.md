@@ -55,14 +55,7 @@ By default, the logger starts with batching enabled and a batch size of 20.
 
 ### Logging Levels
 
-EVOLog defines these levels. The names below match the `LoggingLevels` enum in the codebase exactly, including `Debugg`.
-
-1. `Verbose`
-2. `Debugg`
-3. `Information`
-4. `Warning`
-5. `Error`
-6. `Fatal`
+EVOLog supports the usual progression from verbose and debug-level events through information, warning, error, and fatal events.
 
 Conduits can ignore anything below their configured threshold.
 
@@ -94,6 +87,9 @@ Typical usage looks like this:
 
 Example:
 
+- `Information` in the sample below is a `LoggingLevels` enum value.
+- `{{0}}` is a template placeholder that EVOLog replaces with the first extra argument passed to `LogArtifact`.
+
 ```vb
 Dim logger As cEvoLogger
 Dim immediateConduit As cLogConduit_Immediate
@@ -102,7 +98,7 @@ Set logger = New cEvoLogger
 Set immediateConduit = New cLogConduit_Immediate
 
 logger.Init "MyLogger"
-immediateConduit.Init "Immediate", Information ' `Information` is a `LoggingLevels` enum value
+immediateConduit.Init "Immediate", Information
 
 logger.AddConduit immediateConduit
 logger.LogArtifact Information, "Application started for {{0}}", Environ$("Username")
