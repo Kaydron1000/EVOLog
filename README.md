@@ -58,7 +58,7 @@ By default, the logger starts with batching enabled and a batch size of 20.
 EVOLog defines these levels:
 
 1. `Verbose`
-2. `Debugg`
+2. `Debugg` (the library's enum name)
 3. `Information`
 4. `Warning`
 5. `Error`
