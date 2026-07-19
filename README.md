@@ -2,8 +2,6 @@
 
 EVOLog is a Serilog-inspired logging library for VBA and Microsoft Office projects. It lets you create a single logger, send one log event through it, and route that event to multiple destinations such as the Immediate window, a text file, a worksheet, a textbox, or another logger.
 
-> **Status:** Archived reference library. This project is no longer in active development, but it remains a useful example of structured-style logging patterns in VBA.
-
 ## Why use EVOLog?
 
 EVOLog was built to make logging in VBA less repetitive and more flexible.
