@@ -60,6 +60,10 @@ Public Property Get ParentEvoLoggers() As cEvoLoggers
     Set ParentEvoLoggers = pParentEvoLoggers
 End Property
 
+Public Property Get ParentLoggingWB() As Workbook
+    Set ParentLoggingWB = pLoggingWB
+End Property
+
 '*******************************************************************************
 ' ILogConduit Name
 '*******************************************************************************
@@ -257,7 +261,7 @@ Public Function SanitizeWorksheetName(SheetName As String) As String
     Next i
     
     ' Remove leading/trailing apostrophes
-    Do While Left$(SheetName, 1) = """"
+    Do While Left$(SheetName, 1) = "'"
     SheetName = Mid$(SheetName, 2)
     Loop
     
@@ -425,7 +429,7 @@ Private Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     '' Get count of how many log items to output
     logItmCnt = 0
     For artifactCnt = LBound(LogArtifacts) To UBound(LogArtifacts)
-        If LogArtifacts(artifactCnt).LoggingLevel >= Me.ConduitLogginglLevel Then
+        If LogArtifacts(artifactCnt).LoggingLevel >= Me.ConduitLoggingLevel Then
             logItmCnt = logItmCnt + 1
         End If
     Next
@@ -438,7 +442,7 @@ Private Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
         '' output log items
         currLogItm = 0
         For artifactCnt = LBound(LogArtifacts) To UBound(LogArtifacts)
-            If LogArtifacts(artifactCnt).LoggingLevel >= Me.ConduitLogginglLevel Then
+            If LogArtifacts(artifactCnt).LoggingLevel >= Me.ConduitLoggingLevel Then
                 templateArr = Split(LogArtifacts(artifactCnt).FormatArtifact(MessageTemplate), vbTab)
                 For cnt = LBound(templateArr) To UBound(templateArr)
                     arr(currLogItm, cnt) = templateArr(cnt)
