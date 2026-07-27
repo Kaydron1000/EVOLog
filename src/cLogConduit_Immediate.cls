@@ -55,8 +55,8 @@ End Property
 '*******************************************************************************
 ' ILogConduit Name
 '*******************************************************************************
-Property Get conduitName() As String
-    conduitName = pConduitName
+Property Get ConduitName() As String
+    ConduitName = pConduitName
 End Property
 
 '*******************************************************************************
@@ -97,8 +97,8 @@ End Sub
 '*******************************************************************************
 ' Initializes properties of the conduit.
 '*******************************************************************************
-Sub Init(conduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Debugg)
-    pConduitName = conduitName
+Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Debugg)
+    pConduitName = ConduitName
     Me.ConduitLoggingLevel = ConduitLoggingLevel
 End Sub
 '*******************************************************************************
@@ -137,6 +137,7 @@ Private Sub Class_Initialize()
     pLoggingLevelNames.Add "Verbose", "Verbose"
     pLoggingLevelNames.Add "Debugg", "Debugg"
     pLoggingLevelNames.Add "Information", "Information"
+    pLoggingLevelNames.Add "Status", "Status"
     pLoggingLevelNames.Add "Warning", "Warning"
     pLoggingLevelNames.Add "Error", "Error"
     pLoggingLevelNames.Add "Fatal", "Fatal"
@@ -153,7 +154,7 @@ Private Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
 End Property
 
 Private Property Get ILogConduit_ConduitName() As String
-    ILogConduit_ConduitName = Me.conduitName
+    ILogConduit_ConduitName = Me.ConduitName
 End Property
 
 Private Property Let ILogConduit_ConduitLoggingLevel(Level As LoggingLevels)

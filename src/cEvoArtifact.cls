@@ -74,6 +74,7 @@ Private Sub Class_Initialize()
     pLoggingLevelNames.Add "Verbose", "Verbose"
     pLoggingLevelNames.Add "Debugg", "Debugg"
     pLoggingLevelNames.Add "Information", "Information"
+    pLoggingLevelNames.Add "Status", "Status"
     pLoggingLevelNames.Add "Warning", "Warning"
     pLoggingLevelNames.Add "Error", "Error"
     pLoggingLevelNames.Add "Fatal", "Fatal"

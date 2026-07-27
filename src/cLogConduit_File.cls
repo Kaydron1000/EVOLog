@@ -62,8 +62,8 @@ End Property
 '*******************************************************************************
 ' ILogConduit Name
 '*******************************************************************************
-Property Get conduitName() As String
-    conduitName = pConduitName
+Property Get ConduitName() As String
+    ConduitName = pConduitName
 End Property
 
 '*******************************************************************************
@@ -140,7 +140,7 @@ End Sub
 ' Initializes properties of the conduit. Initializes everything for the
 ' channeling to a file except for the parent cEvoLogger object.
 '*******************************************************************************
-Sub Init(conduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose, Optional LogFileName As String = "#TIMESTAMP#_#CONDUITNAME#", _
+Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose, Optional LogFileName As String = "#TIMESTAMP#_#CONDUITNAME#", _
          Optional LogFolderPath As String = ".\LogOutput", Optional FileAccess As FileAccesses = FileAccesses.Append)
     
     Dim fileExists As Boolean
@@ -151,7 +151,7 @@ Sub Init(conduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
     
     hostPath = LibFileTools.GetHostFilePath
     ad = LibFileTools.ParentFolder(GetLocalPath(hostPath))
-    pConduitName = conduitName
+    pConduitName = ConduitName
     Me.ConduitLoggingLevel = ConduitLoggingLevel
     If Left(LogFolderPath, 2) = ".\" Then
         folderPath = BuildPath(LibFilesTools.ParentFolder(GetLocalPath(hostPath)), LogFolderPath, "\")
@@ -215,7 +215,7 @@ Private Function FormatString(filePath As String, Optional TimeStampFormatString
     FormatString = Replace(FormatString, "#DATE#", Format(Now, DateFormatString))
     FormatString = Replace(FormatString, "#TIME#", Format(Now, TimeFormatString) & Right(Format(Timer, "0.000"), 4))
     FormatString = Replace(FormatString, "#TIMESTAMP#", Format(Now, TimeStampFormatString) & Right(Format(Timer, "0.000"), 4))
-    FormatString = Replace(FormatString, "#CONDUITNAME#", Me.conduitName)
+    FormatString = Replace(FormatString, "#CONDUITNAME#", Me.ConduitName)
     
 '    s = Format(Now, "yyyy-mm-dd hh:mm:ss") & Right(Format(Timer, "0.000"), 4)
 End Function
@@ -371,6 +371,7 @@ Private Sub Class_Initialize()
     pLoggingLevelNames.Add "Verbose", "Verbose"
     pLoggingLevelNames.Add "Debugg", "Debugg"
     pLoggingLevelNames.Add "Information", "Information"
+    pLoggingLevelNames.Add "Status", "Status"
     pLoggingLevelNames.Add "Warning", "Warning"
     pLoggingLevelNames.Add "Error", "Error"
     pLoggingLevelNames.Add "Fatal", "Fatal"
@@ -394,7 +395,7 @@ Private Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
 End Property
 
 Private Property Get ILogConduit_ConduitName() As String
-    ILogConduit_ConduitName = Me.conduitName
+    ILogConduit_ConduitName = Me.ConduitName
 End Property
 
 Private Property Let ILogConduit_ConduitLoggingLevel(Level As LoggingLevels)

@@ -2,11 +2,11 @@ VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
-Attribute VB_Name = "cLogConduit_TextBox"
+Attribute VB_Name = "cLogConduit_ListBox"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
-Attribute VB_Exposed = True
+Attribute VB_Exposed = False
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''EVOLog - a logging platform for VBA inspired by Serilog Library for .NET.
 ''--------------------------------------
@@ -31,7 +31,7 @@ Attribute VB_Exposed = True
 ''Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-''This log conduit channels log messages to a MSForms.Textbox.
+''This log conduit channels LogArtifacts to Immediate Window.
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -42,7 +42,8 @@ Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
 
-Dim pTextBox As Object
+Dim pListBox As MSForms.ListBox
+Dim pLoggingLevelNames As Collection
 
 '*******************************************************************************
 ' Parent Loggers that log messages are channeled from.
@@ -94,23 +95,22 @@ Private Sub InitConduit(ParentEvoLogger As cEvoLogger)
 End Sub
 
 '*******************************************************************************
-' Initializes properties of the conduit. Initializes everything for the
-' channeling to a Textbox except for the parent cEvoLogger object.
+' Initializes properties of the conduit.
 '*******************************************************************************
-Sub Init(TextBox As Object, ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Information)
-    Set pTextBox = TextBox
+Sub Init(Listbx As Object, ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Information)
+    Set pListBox = Listbx
     pConduitName = ConduitName
     
     Me.ConduitLoggingLevel = ConduitLoggingLevel
 End Sub
-
 '*******************************************************************************
 ' Channels a single LogArtifact to its destination.
 '*******************************************************************************
 Private Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
     If LogArtifact.LoggingLevel >= Me.ConduitLoggingLevel Then
-        pTextBox.Text = pTextBox.Text & LogArtifact.FormatArtifact(pMessageTemplate) & vbNewLine
+        pListBox.AddItem LogArtifact.FormatArtifact(pMessageTemplate)
     End If
+    ''
 End Sub
 
 '*******************************************************************************
@@ -118,30 +118,71 @@ End Sub
 '*******************************************************************************
 Private Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     Dim cnt As Long
-    Dim sendStrg As String
-    Dim sb As cStringBuilder
     
-    Set sb = New cStringBuilder
-    
-    sb.Append pTextBox.Text
     For cnt = LBound(LogArtifacts) To UBound(LogArtifacts)
         If LogArtifacts(cnt).LoggingLevel >= Me.ConduitLoggingLevel Then
-            sb.Append LogArtifacts(cnt).FormatArtifact(pMessageTemplate) & vbNewLine
+            pListBox.AddItem LogArtifacts(cnt).FormatArtifact(pMessageTemplate)
         End If
     Next
-    
-    pTextBox.Text = sb.ToString
+    Call AutoSizeListBoxColumns(pListBox, 1)
 End Sub
 
-'*******************************************************************************
-' Class initialize method
-'*******************************************************************************
 Private Sub Class_Initialize()
     pMessageTemplate = "[#LOGGINGLEVEL#] [#DATE# #TIME#]: #MESSAGE#"
     Set pParentEvoLoggers = New cEvoLoggers
+    
+    Set pLoggingLevelNames = New Collection
+    pLoggingLevelNames.Add "Verbose", "Verbose"
+    pLoggingLevelNames.Add "Debugg", "Debugg"
+    pLoggingLevelNames.Add "Information", "Information"
+    pLoggingLevelNames.Add "Status", "Status"
+    pLoggingLevelNames.Add "Warning", "Warning"
+    pLoggingLevelNames.Add "Error", "Error"
+    pLoggingLevelNames.Add "Fatal", "Fatal"
 End Sub
 
-
+Private Sub ListboxAutoColumnwidth(ListBox As MSForms.ListBox)
+    Dim uf As UserForm
+    Dim TextBox_Dummy As Control
+    Dim colCnt As Integer
+    Dim rowCnt As Integer
+    Dim maxColwidth As Double
+    Dim colwidthsArr() As String
+    ReDim colwidthsArr(0 To ListBox.ColumnCount - 1)
+    
+    On Error Resume Next
+    Set uf = GetParentForm(ListBox)
+    Set TextBox_Dummy = uf.Controls("txtBoxDummy")
+    On Error GoTo 0
+    
+    If TextBox_Dummy Is Nothing Then
+        Set TextBox_Dummy = Me.Controls.Add("Forms.TextBox.1", "txtBoxDummy", False)
+        TextBox_Dummy.AutoSize = True
+    End If
+    TextBox_Dummy.Font.size = ListBox.Font.size
+    TextBox_Dummy.Font.Name = ListBox.Font.Name
+    
+    For colCnt = 0 To ListBox.ColumnCount - 1
+        maxColwidth = 0
+        For rowCnt = 0 To ListBox.ListCount - 1
+            TextBox_Dummy.Text = ListBox.List(rowCnt, colCnt)
+            If TextBox_Dummy.Width > maxColwWidth Then maxColwidth = TextBox_Dummy.Width
+        Next
+        colwidthsArr(colCnt) = CStr(maxColwidth + 5)
+    Next
+    
+    ListBox.ColumnWidths = Join(colwidthsArr, ";")
+End Sub
+Private Function GetParentForm(ctrl As Object) As UserForm
+    Dim par As Object
+    Set par = ctrl
+    
+    Do While Not TypeOf par Is MSForms.UserForm
+        Set par = par.Parent
+    Loop
+    
+    Set GetParentForm = par
+End Function
 '*******************************************************************************
 ' Implementing ILogConduit Interface Methods and Properties
 '*******************************************************************************
@@ -182,3 +223,6 @@ End Sub
 Private Sub ILogConduit_ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     ChannelLogArtifacts LogArtifacts
 End Sub
+
+
+

@@ -64,6 +64,7 @@ End Sub
 
 Public Sub Remove(Index As Variant)
     myCustomCollection.Remove Index
+    myCustomCollection.Remove Index
 End Sub
 
 Public Property Get Item(Index) As cEvoLogger

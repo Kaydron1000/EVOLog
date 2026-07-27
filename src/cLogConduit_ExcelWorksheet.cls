@@ -39,7 +39,7 @@ Implements ILogConduit
 
 Private Const constConduitFileExtension As String = "xlsx"
 
-Dim pParentLoggers As cEvoLoggers
+Dim pParentEvoLoggers As cEvoLoggers
 Dim pConduitName As String
 Dim pConduitLoggingLevel As LoggingLevels
 Dim pMessageTemplate As String
@@ -56,15 +56,15 @@ Dim pLogFileName As String
 '*******************************************************************************
 ' Parent Loggers that log messages are channeled from.
 '*******************************************************************************
-Public Property Get ParentLoggers() As cEvoLoggers
-    Set ParentLogger = pParentLogger
+Public Property Get ParentEvoLoggers() As cEvoLoggers
+    Set ParentEvoLoggers = pParentEvoLoggers
 End Property
 
 '*******************************************************************************
 ' ILogConduit Name
 '*******************************************************************************
-Property Get conduitName() As String
-    conduitName = pConduitName
+Property Get ConduitName() As String
+    ConduitName = pConduitName
 End Property
 
 '*******************************************************************************
@@ -117,10 +117,10 @@ Property Get LogFileName() As String
     LogFileName = pLogFileName
 End Property
 
-Private Sub InitConduit(ParentLogger As cEvoLogger)
-    pParentLoggers.Add ParentLogger, ParentLogger.LoggerName
+Private Sub InitConduit(ParentEvoLogger As cEvoLogger)
+    pParentEvoLoggers.Add ParentEvoLogger, ParentEvoLogger.LoggerName
 End Sub
-Sub Init(conduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Information, Optional LogFileName As Variant = "#DATE##TIME#_#CONDUITNAME#", _
+Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Information, Optional LogFileName As Variant = "#DATE##TIME#_#CONDUITNAME#", _
          Optional LogFolderPath As Variant = ".\LogOutput", Optional FileAccess As FileAccesses = FileAccesses.Append, _
          Optional WorksheetName As Variant = "#DATE##TIME#_#CONDUITNAME#", Optional Headers As Variant = Nothing)
     
@@ -133,7 +133,7 @@ Sub Init(conduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
     Dim fileName As String
     Dim folderPath As String
     
-    pConduitName = conduitName
+    pConduitName = ConduitName
     Me.ConduitLoggingLevel = ConduitLoggingLevel
     If Left(LogFolderPath, 2) = ".\" Then
         folderPath = BuildPath(ThisWorkbook.Path, LogFolderPath, "\")
@@ -197,11 +197,11 @@ Sub Init(conduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
         pLogFilePath = BuildPath(folderPath, fileName)
         
         ''Creating new workbook
-        Application.DisplayRlerts = False
+        Application.DisplayAlerts = False
         Set pLoggingWB = Application.Workbooks.Add
         pLoggingWB.SaveAs fileName:=Me.LogFilePath, FileFormat:=XlFileFormat.xlWorkbookDefault, _
         AccessMode:=XlSaveAsAccessMode.xlNoChange, ConflictResolution:=XlSaveConflictResolution.xlLocalSessionChanges
-        Application.DisplayRlerts = True
+        Application.DisplayAlerts = True
     ElseIf Not fileExists Then
         pLogFolderPath = folderPath
         pLogFileName = fileName
@@ -211,12 +211,13 @@ Sub Init(conduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
         Set pLoggingWB = Application.Workbooks.Add
         pLoggingWB.SaveAs fileName:=Me.LogFilePath, FileFormat:=XlFileFormat.xlWorkbookDefault, _
         AccessMode:=XlSaveAsAccessMode.xlNoChange, ConflictResolution:=XlSaveConflictResolution.xlLocalSessionChanges
-        Application.DisplayRlerts = True
+        Application.DisplayAlerts = True
     End If
     
     ''Setting up worksheet
     n = 1
-    baseShtName = shtName
+    shtName = SanatizeWorksheetName(shtName)
+    baseShtName = SanatizeWorksheetName(shtName)
     Do While ContainsKey(pLoggingWB.Worksheets, shtName)
         shtName = baseShtName & "_" & Format(n, "000")
         n = n + 1
@@ -224,8 +225,40 @@ Sub Init(conduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
     Set pLoggingSht = pLoggingWB.Worksheets.Add
     pLoggingSht.Name = shtName
     ''Headers
-    SetTitleAndHeaders pLoggingSht, "LogSheet - " & conduitName, pDefaultHeaders
+    SetTitleAndHeaders pLoggingSht, "LogSheet - " & ConduitName, pDefaultHeaders
 End Sub
+Public Function SanitizeWorksheetName(SheetName As String) As String
+    Dim InvalidChars As Variant
+    Dim i As Long
+    
+    InvalidChars = Array("\", "/", "?", "*", "[", "]", ":")
+
+    ' Replace invalid characters
+    For i = LBound(InvalidChars) To UBound(InvalidChars)
+    SheetName = Replace(SheetName, InvalidChars(i), "_")
+    Next i
+    
+    ' Remove leading/trailing apostrophes
+    Do While Left$(SheetName, 1) = """"
+    SheetName = Mid$(SheetName, 2)
+    Loop
+    
+    Do While Right$(SheetName, 1) = "'"
+    SheetName = Left$(SheetName, Len(SheetName) - 1)
+    Loop
+    
+    ' Limit to Excel's maximum worksheet name length
+    If Len(SheetName) > 31 Then
+    SheetName = Left$(SheetName, 31)
+    End If
+
+    ' Ensure name is not blank
+    If Trim$(SheetName) = "" Then
+        SheetName = "Sheet"
+    End If
+    
+    SanitizeWorksheetName = SheetName
+End Function
 
 '*******************************************************************************
 ' Formats the string. Replaces the variables.
@@ -234,13 +267,13 @@ Private Function FormatString(filePath As String, Optional TimeStampFormatString
                                Optional DateFormatString As Variant = "mm/dd/yy", Optional TimeFormatString As Variant = "hh:nn:ss") As String
     ''TODO: Fix milliseconds formatting
     Dim a, b, c, d
-    tsts
+    ''tsts
     FormatString = UCase(filePath)
     FormatString = Replace(FormatString, "#LOGGINGLEVEL#", pLoggingLevelNames(ConduitLoggingLevel))
     FormatString = Replace(FormatString, "#DATE#", Format(Now, DateFormatString))
     FormatString = Replace(FormatString, "#TIME#", Format(Now, TimeFormatString) & Right(Format(Timer, "0.000"), 4))
     FormatString = Replace(FormatString, "#TIMESTAMP#", Format(Now, TimeStampFormatString) & Right(Format(Timer, "0.000"), 4))
-    FormatString = Replace(FormatString, "#CONDUITNAME#", Me.conduitName)
+    FormatString = Replace(FormatString, "#CONDUITNAME#", Me.ConduitName)
     
 '    s = Format(Now, "yyyy-mm-dd hh:mm:ss") & Right(Format(Timer, "0.000"), 4)
 End Function
@@ -362,50 +395,61 @@ Sub SetTitleAndHeaders(sht As Worksheet, Title As String, Headers() As String)
     sht.Range("A1", sht.Cells(l, UBound(Headers) - LBound(Headers) + 1)).MergeCells = True
     sht.Range("A1").Value = Title
 End Sub
-Private Sub ChannelLogArtifact(LogMessageLevel As LoggingLevels, Message As String)
+Private Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
     Dim arr() As String
     Dim templateArr() As String
-    Dim maxX As Long, minX As Long
-    Dim maxY As Long, minY As Long
-    
-    templateArr = Split(MessageTemplate, vbTab)
-    ReDim arr(LBound(arr) To UBound(arr))
-    
-    For cnt = LBound(arr) To UBound(arr)
-        arr(cnt) = FormatMessage(templatelArr(cnt), LogMessageLevel, Message)
-    Next
-    
-    maxX = UBound(arr, 1)
-    minX = LBound(arr, 1)
-    maxY = UBound(arr, 2)
-    minY = LBound(arr, 2)
-    
-    pLoggingSht.Cells(pLoggingSht.Rows.Count, 1).End(x1Up).Offset(l, 0).Resize(maxY - minY + 1, maxX - minX + 1).Value = Application.WorksheetFunction.Transpose(TransposeArray(arr))
-End Sub
-
-Private Sub ChannelLogArtifacts(LogMessageLevels() As LoggingLevels, Messages() As String, EntryCount As Integer)
     Dim cnt As Long
-    Dim MessageCnt As Integer
+    Dim pasteRow As Long
+    
+    If LogArtifact.LogginglLevel >= Me.ConduitLoggingLevel Then
+        templateArr = Split(LogArtifact.FormatArtifact(MessageTemplate), vbTab)
+        ReDim arr(0 To 0, 0 To UBound(templateArr))
+        
+        For cnt = LBound(templateArr) To UBound(templateArr)
+            arr(0, cnt) = templateArr(cnt)
+        Next
+        
+        pasteRow = pLoggingSht.Cells(pLoggingSht.Rows.Count, 1).End(xlUp).Offset(1, 0).Row
+        Call PasteArray(pLoggingSht, arr, pasteRow, 1)
+    End If
+End Sub
+Private Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     Dim arr() As String
     Dim templateArr() As String
-    Dim maxX As Long, minX As Long
-    Dim maxY As Long, minY As Long
+    Dim cnt As Long
+    Dim pasteRow As Integer
+    Dim artifactCnt As Integer
+    Dim logItmCnt As Integer
+    Dim currLogItm As Integer
     
-    templateArr = Split(MessageTemplate, vbTab)
-    ReDim arr(LBound(LogMessageLevels) To LBound(LogMessageLevels) + EntryCount - 1, LBound(templateArr) To UBound(templateArr))
-    
-    For MessageCnt = LBound(LogMessageLevels) To LBound(LogMessageLevels) + EntryCount - 1
-        For cnt = LBound(templateArr) To UBound(templateArr)
-            arr(MessageCnt, cnt) = FormatMessage(templatelArr(cnt), LogMessageLevels(MessageCnt), Messages(MessageCnt))
-        Next
+    '' Get count of how many log items to output
+    logItmCnt = 0
+    For artifactCnt = LBound(LogArtifacts) To UBound(LogArtifacts)
+        If LogArtifacts(artifactCnt).LogginglLevel >= Me.ConduitLogginglLevel Then
+            logItmCnt = logItmCnt + 1
+        End If
     Next
-    
-    maxX = UBound(arr, 2)
-    minX = LBound(arr, 2)
-    maxY = UBound(arr, 1)
-    minY = LBound(arr, 1)
-    
-    pLoggingSht.Cells(pLoggingSht.Rows.Count, 1).End(x1Up).Offset(l, 0).Resize(maxY - minY + 1, maxX - minX + 1).Value = Application.WorksheetFunction.Transpose(TransposeArray(arr))
+
+    If logItmCnt > 0 Then
+        '' Get count of how many columns to output
+        templateArr = Split(LogArtifacts(LBound(LogArtifacts)).FormatArtifact(MessageTemplate), vbTab)
+        ReDim arr(0 To logItmCnt - 1, LBound(templateArr) To UBound(templateArr))
+        
+        '' output log items
+        currLogItm = 0
+        For artifactCnt = LBound(LogArtifacts) To UBound(LogArtifacts)
+            If LogArtifacts(artifactCnt).LogginglLevel >= Me.ConduitLogginglLevel Then
+                templateArr = Split(LogArtifacts(artifactCnt).FormatArtifact(MessageTemplate), vbTab)
+                For cnt = LBound(templateArr) To UBound(templateArr)
+                    arr(currLogItm, cnt) = templateArr(cnt)
+                Next
+                currLogItm = currLogIltm + 1
+            End If
+        Next
+        
+        pasteRow = pLoggingSht.Cells(pLoggingSht.Rows.Count, 1).End(xlUp).Offset(1, 0).Row
+        Call PasteArray(pLoggingSht, arr, pasteRow, 1)
+    End If
 End Sub
 
 Private Function TransposeArray(MyArray As Variant) As Variant
@@ -518,6 +562,32 @@ Private Function SanatizeFileName(fileName As String)
         SanatizeFileName = Replace(SanatizeFileName, illegalCharArray(n), replaceChar(n))
     Next
 End Function
+
+Private Sub PasteArray(sht As Worksheet, arr As Variant, topLeftRow As Integer, topLeftCol As Integer)
+    Dim botRightRow As Long
+    Dim botRightCol As Long
+    
+    If (HasElements(arr, 2)) Then
+        botRightRow = topLeftRow + UBound(arr, 1) - LBound(arr, 1)
+        botRightCol = topLeftCol + UBound(arr, 2) - LBound(arr, 2)
+        Dim r As Long
+        Dim c As Long
+        Dim i As Long
+        For c = LBound(arr, 1) To UBound(arr, 1)
+            For r = LBound(arr, 2) To UBound(arr, 2)
+                ''Length of Cell content can only be so long, Character limit to 32,000
+                i = Len(arr(c, r))
+                If i > 32000 Then
+                    arr(c, r) = Mid(arr(c, r), 1, 32000)
+                End If
+            Next
+        Next
+        
+        sht.Range(sht.Cells(topLeftRow, topLeftCol), sht.Cells(botRightRow, botRightCol)) = arr
+        Else
+    End If
+End Sub
+
 '*******************************************************************************
 ' Class initialize method
 '*******************************************************************************
@@ -557,7 +627,7 @@ Private Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
 End Property
 
 Private Property Get ILogConduit_ConduitName() As String
-    ILogConduit_ConduitName = Me.conduitName
+    ILogConduit_ConduitName = Me.ConduitName
 End Property
 
 Private Property Let ILogConduit_ConduitLoggingLevel(Level As LoggingLevels)

@@ -58,8 +58,8 @@ End Property
 '*******************************************************************************
 ' ILogConduit Name
 '*******************************************************************************
-Property Get conduitName() As String
-    conduitName = pConduitName
+Property Get ConduitName() As String
+    ConduitName = pConduitName
 End Property
 
 '*******************************************************************************
@@ -127,8 +127,8 @@ End Sub
 '*******************************************************************************
 ' Initializes properties of the conduit.
 '*******************************************************************************
-Sub Init(conduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose, Optional InitialMemorySize As Integer = 20)
-    pConduitName = conduitName
+Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose, Optional InitialMemorySize As Integer = 20)
+    pConduitName = ConduitName
     Me.ConduitLoggingLevel = ConduitLoggingLevel
     MemorySize = InitialMemorySize
     pNextMemoryIndx = 0
@@ -183,7 +183,7 @@ Private Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
 End Property
 
 Private Property Get ILogConduit_ConduitName() As String
-    ILogConduit_ConduitName = Me.conduitName
+    ILogConduit_ConduitName = Me.ConduitName
 End Property
 
 Private Property Let ILogConduit_ConduitLoggingLevel(Level As LoggingLevels)

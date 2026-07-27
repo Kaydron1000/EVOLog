@@ -42,7 +42,7 @@ Option Explicit
 Property Get ParentEvoLoggers() As cEvoLoggers
 End Property
 
-Property Get conduitName() As String
+Property Get ConduitName() As String
 End Property
 
 Property Let ConduitLoggingLevel(Level As LoggingLevels)

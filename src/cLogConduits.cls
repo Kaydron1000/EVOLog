@@ -64,6 +64,7 @@ End Sub
 
 Public Sub Remove(Index As Variant)
     myCustomCollection.Remove Index
+    myCustomCollectionKeys.Remove Index
 End Sub
 
 Public Property Get Item(ByVal Index As Variant) As ILogConduit

@@ -50,8 +50,8 @@ Property Get ParentEvoLoggers() As cEvoLoggers
     Set ParentEvoLoggers = pParentEvoLoggers
 End Property
 
-Property Get conduitName() As String
-    conduitName = pConduitName
+Property Get ConduitName() As String
+    ConduitName = pConduitName
 End Property
 
 Property Let ConduitLoggingLevel(Level As LoggingLevels)
@@ -80,23 +80,27 @@ Property Get InformationCount() As Long
     InformationCount = pLogCounts(3)
 End Property
 
+Property Get StatusCount() As Long
+    InformationCount = pLogCounts(4)
+End Property
+
 Property Get WarningCount() As Long
-    WarningCount = pLogCounts(4)
+    WarningCount = pLogCounts(5)
 End Property
 Property Get ErrorCount() As Long
-    ErrorCount = pLogCounts(5)
+    ErrorCount = pLogCounts(6)
 End Property
 Property Get FatalCount() As Long
-    FatalCount = pLogCounts(6)
+    FatalCount = pLogCounts(7)
 End Property
-Private Sub InitConduit(ParentLogger As cEvoLogger)
+Private Sub InitConduit(ParentEvoLogger As cEvoLogger)
     pParentEvoLoggers.Add ParentEvoLogger, ParentEvoLogger.LoggerName
     
     ReDim pLogCounts(1 To pLoggingLevelNames.Count)
 End Sub
 
-Sub Init(conduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose)
-    pConduitName = conduitName
+Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose)
+    pConduitName = ConduitName
     
     Me.ConduitLoggingLevel = ConduitLoggingLevel
 End Sub
@@ -158,6 +162,7 @@ Private Sub Class_Initialize()
     pLoggingLevelNames.Add "Verbose", "Verbose"
     pLoggingLevelNames.Add "Debugg", "Debugg"
     pLoggingLevelNames.Add "Information", "Information"
+    pLoggingLevelNames.Add "Status", "Status"
     pLoggingLevelNames.Add "Warning", "Warning"
     pLoggingLevelNames.Add "Error", "Error"
     pLoggingLevelNames.Add "Fatal", "Fatal"
@@ -174,7 +179,7 @@ Private Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
 End Property
 
 Private Property Get ILogConduit_ConduitName() As String
-    ILogConduit_ConduitName = Me.conduitName
+    ILogConduit_ConduitName = Me.ConduitName
 End Property
 
 Private Property Let ILogConduit_ConduitLoggingLevel(Level As LoggingLevels)

@@ -45,9 +45,10 @@ Public Enum LoggingLevels
     Verbose = 1
     Debugg = 2
     Information = 3
-    Warning = 4
-    Error = 5
-    Fatal = 6
+    Status = 4
+    Warning = 5
+    Error = 6
+    Fatal = 7
 End Enum
 Enum FileAccesses
     Overwrite
@@ -148,7 +149,7 @@ End Sub
 Sub AddConduit(Conduit As ILogConduit)
     Me.FlushBatchedLogArtifacts
     Conduit.InitConduit Me
-    pActiveConduits.Add Conduit, Conduit.conduitName
+    pActiveConduits.Add Conduit, Conduit.ConduitName
 End Sub
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -166,7 +167,7 @@ Public Function RemoveConduit(Conduit As Variant) As ILogConduit
     Me.FlushBatchedLogArtifacts
     
     ConduitObj.ParentEvoLoggers.Remove Me.LoggerName
-    pActiveConduits.Remove ConduitObj.conduitName
+    pActiveConduits.Remove ConduitObj.ConduitName
     
     Set RemoveConduit = ConduitObj
 End Function
@@ -205,6 +206,9 @@ Sub LogArtifact(LoggingLevel As LoggingLevels, LogMessage As String, ParamArray 
     pBatchedLogArtifacts(pNextBatchCnt).Parameters = objs
     
     ChannelLogArtifactObject pBatchedLogArtifacts(pNextBatchCnt)
+    If LoggingLevel = LoggingLevels.Status Then
+        FlushBatchedLogArtifacts
+    End If
 End Sub
 Sub LogArtifactObject(Artifact As cEvoArtifact)
     pBatchedLogArtifacts(pNextBatchCnt).Charged = True
@@ -214,6 +218,9 @@ Sub LogArtifactObject(Artifact As cEvoArtifact)
     pBatchedLogArtifacts(pNextBatchCnt).Parameters = Artifact.Parameters
     
     ChannelLogArtifactObject pBatchedLogArtifacts(pNextBatchCnt)
+    If Artifact.LoggingLevel = LoggingLevels.Status Then
+        FlushBatchedLogArtifacts
+    End If
 End Sub
     
 Private Sub ChannelLogArtifactObject(Artifact As cEvoArtifact)

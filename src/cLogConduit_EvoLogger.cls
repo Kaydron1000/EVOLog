@@ -35,7 +35,6 @@ Attribute VB_Exposed = True
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
-
 Implements ILogConduit
 
 Dim pParentEvoLoggers As cEvoLoggers
@@ -57,8 +56,8 @@ End Property
 '*******************************************************************************
 ' ILogConduit Name
 '*******************************************************************************
-Property Get conduitName() As String
-    conduitName = pConduitName
+Property Get ConduitName() As String
+    ConduitName = pConduitName
 End Property
 
 '*******************************************************************************
@@ -100,10 +99,10 @@ End Sub
 ' Initializes properties of the conduit. Initializes everything for the
 ' channeling to an EvoLogger except for the parent cEvoLogger object.
 '*******************************************************************************
-Sub Init(EvoLogger As cEvoLogger, conduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose)
+Sub Init(EvoLogger As cEvoLogger, ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = Verbose)
     Set pEvoLogger = EvoLogger
     
-    Me.conduitName = conduitName
+    Me.ConduitName = ConduitName
     Me.ConduitLoggingLevel = ConduitLoggingLevel
 End Sub
 
@@ -136,6 +135,7 @@ Private Sub Class_Initialize()
     pLoggingLevelNames.Add "Verbose", "Verbose"
     pLoggingLevelNames.Add "Debugg", "Debugg"
     pLoggingLevelNames.Add "Information", "Information"
+    pLoggingLevelNames.Add "Status", "Status"
     pLoggingLevelNames.Add "Warning", "Warning"
     pLoggingLevelNames.Add "Error", "Error"
     pLoggingLevelNames.Add "Fatal", "Fatal"
@@ -152,7 +152,7 @@ Private Property Get ILogConduit_ParentEvoLoggers() As cEvoLoggers
 End Property
 
 Private Property Get ILogConduit_ConduitName() As String
-    ILogConduit_ConduitName = Me.conduitName
+    ILogConduit_ConduitName = Me.ConduitName
 End Property
 
 Private Property Let ILogConduit_ConduitLoggingLevel(Level As LoggingLevels)
