@@ -216,8 +216,8 @@ Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
     
     ''Setting up worksheet
     n = 1
-    shtName = SanatizeWorksheetName(shtName)
-    baseShtName = SanatizeWorksheetName(shtName)
+    shtName = SanitizeWorksheetName(shtName)
+    baseShtName = SanitizeWorksheetName(shtName)
     Do While ContainsKey(pLoggingWB.Worksheets, shtName)
         shtName = baseShtName & "_" & Format(n, "000")
         n = n + 1
@@ -227,6 +227,24 @@ Sub Init(ConduitName As String, Optional ConduitLoggingLevel As LoggingLevels = 
     ''Headers
     SetTitleAndHeaders pLoggingSht, "LogSheet - " & ConduitName, pDefaultHeaders
 End Sub
+
+'*******************************************************************************
+' Formats the string. Replaces the variables.
+'*******************************************************************************
+Private Function FormatString(filePath As String, Optional TimeStampFormatString As Variant = "yyyymmdd_hhmmss", _
+                               Optional DateFormatString As Variant = "mm/dd/yy", Optional TimeFormatString As Variant = "hh:nn:ss") As String
+    ''TODO: Fix milliseconds formatting
+    Dim a, b, c, d
+    ''tsts
+    FormatString = UCase(filePath)
+    FormatString = Replace(FormatString, "#LOGGINGLEVEL#", pLoggingLevelNames(ConduitLoggingLevel))
+    FormatString = Replace(FormatString, "#DATE#", Format(Now, DateFormatString))
+    FormatString = Replace(FormatString, "#TIME#", Format(Now, TimeFormatString) & Right(Format(Timer, "0.000"), 4))
+    FormatString = Replace(FormatString, "#TIMESTAMP#", Format(Now, TimeStampFormatString) & Right(Format(Timer, "0.000"), 4))
+    FormatString = Replace(FormatString, "#CONDUITNAME#", Me.ConduitName)
+    
+'    s = Format(Now, "yyyy-mm-dd hh:mm:ss") & Right(Format(Timer, "0.000"), 4)
+End Function
 Public Function SanitizeWorksheetName(SheetName As String) As String
     Dim InvalidChars As Variant
     Dim i As Long
@@ -258,24 +276,6 @@ Public Function SanitizeWorksheetName(SheetName As String) As String
     End If
     
     SanitizeWorksheetName = SheetName
-End Function
-
-'*******************************************************************************
-' Formats the string. Replaces the variables.
-'*******************************************************************************
-Private Function FormatString(filePath As String, Optional TimeStampFormatString As Variant = "yyyymmdd_hhmmss", _
-                               Optional DateFormatString As Variant = "mm/dd/yy", Optional TimeFormatString As Variant = "hh:nn:ss") As String
-    ''TODO: Fix milliseconds formatting
-    Dim a, b, c, d
-    ''tsts
-    FormatString = UCase(filePath)
-    FormatString = Replace(FormatString, "#LOGGINGLEVEL#", pLoggingLevelNames(ConduitLoggingLevel))
-    FormatString = Replace(FormatString, "#DATE#", Format(Now, DateFormatString))
-    FormatString = Replace(FormatString, "#TIME#", Format(Now, TimeFormatString) & Right(Format(Timer, "0.000"), 4))
-    FormatString = Replace(FormatString, "#TIMESTAMP#", Format(Now, TimeStampFormatString) & Right(Format(Timer, "0.000"), 4))
-    FormatString = Replace(FormatString, "#CONDUITNAME#", Me.ConduitName)
-    
-'    s = Format(Now, "yyyy-mm-dd hh:mm:ss") & Right(Format(Timer, "0.000"), 4)
 End Function
 Private Function tsts()
     Dim a, b, c, d, e, f, g, h, i
@@ -392,7 +392,7 @@ Sub SetTitleAndHeaders(sht As Worksheet, Title As String, Headers() As String)
     For n = LBound(Headers) To UBound(Headers)
         sht.Cells(2, (n - LBound(Headers)) + 1).Value = Headers(n)
     Next
-    sht.Range("A1", sht.Cells(l, UBound(Headers) - LBound(Headers) + 1)).MergeCells = True
+    sht.Range("A1", sht.Cells(1, UBound(Headers) - LBound(Headers) + 1)).MergeCells = True
     sht.Range("A1").Value = Title
 End Sub
 Private Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
@@ -401,7 +401,7 @@ Private Sub ChannelLogArtifact(LogArtifact As cEvoArtifact)
     Dim cnt As Long
     Dim pasteRow As Long
     
-    If LogArtifact.LogginglLevel >= Me.ConduitLoggingLevel Then
+    If LogArtifact.LoggingLevel >= Me.ConduitLoggingLevel Then
         templateArr = Split(LogArtifact.FormatArtifact(MessageTemplate), vbTab)
         ReDim arr(0 To 0, 0 To UBound(templateArr))
         
@@ -425,7 +425,7 @@ Private Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
     '' Get count of how many log items to output
     logItmCnt = 0
     For artifactCnt = LBound(LogArtifacts) To UBound(LogArtifacts)
-        If LogArtifacts(artifactCnt).LogginglLevel >= Me.ConduitLogginglLevel Then
+        If LogArtifacts(artifactCnt).LoggingLevel >= Me.ConduitLogginglLevel Then
             logItmCnt = logItmCnt + 1
         End If
     Next
@@ -438,12 +438,12 @@ Private Sub ChannelLogArtifacts(LogArtifacts() As cEvoArtifact)
         '' output log items
         currLogItm = 0
         For artifactCnt = LBound(LogArtifacts) To UBound(LogArtifacts)
-            If LogArtifacts(artifactCnt).LogginglLevel >= Me.ConduitLogginglLevel Then
+            If LogArtifacts(artifactCnt).LoggingLevel >= Me.ConduitLogginglLevel Then
                 templateArr = Split(LogArtifacts(artifactCnt).FormatArtifact(MessageTemplate), vbTab)
                 For cnt = LBound(templateArr) To UBound(templateArr)
                     arr(currLogItm, cnt) = templateArr(cnt)
                 Next
-                currLogItm = currLogIltm + 1
+                currLogItm = currLogItm + 1
             End If
         Next
         
@@ -598,13 +598,14 @@ Private Sub Class_Initialize()
     pDefaultHeaders(1) = "Time Stamp"
     pDefaultHeaders(2) = "Log Message"
     
-    Set pParentLoggers = New cEvoLoggers
+    Set pParentEvoLoggers = New cEvoLoggers
     
     Set pLoggingLevelNames = New Collection
     ''pDefaultLoggingLevel = Information
     pLoggingLevelNames.Add "Verbose", "Verbose"
     pLoggingLevelNames.Add "Debugg", "Debugg"
     pLoggingLevelNames.Add "Information", "Information"
+    pLoggingLevelNames.Add "Status", "Status"
     pLoggingLevelNames.Add "Warning", "Warning"
     pLoggingLevelNames.Add "Error", "Error"
     pLoggingLevelNames.Add "Fatal", "Fatal"

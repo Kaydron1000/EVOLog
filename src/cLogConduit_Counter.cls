@@ -81,7 +81,7 @@ Property Get InformationCount() As Long
 End Property
 
 Property Get StatusCount() As Long
-    InformationCount = pLogCounts(4)
+    StatusCount = pLogCounts(4)
 End Property
 
 Property Get WarningCount() As Long
